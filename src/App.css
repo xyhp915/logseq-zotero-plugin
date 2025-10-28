@@ -1,0 +1,7 @@
+@reference "tailwindcss";
+
+@layer components {
+  #root {
+    @apply p-28;
+  }
+}
