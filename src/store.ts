@@ -20,7 +20,16 @@ export type ZoteroItemEntity = {
   [key: string]: any
 }
 
-export function createZRequestHookState<T = ZoteroItemEntity>(opts: {
+export type ZoteroCollectionEntity = {
+  key: string,
+  name: string,
+  parentCollectionKey: string | null,
+  dateAdded: string,
+  dateModified: string,
+  [key: string]: any
+}
+
+function createZRequestHookState<T = any>(opts: {
   zGetFn: (opts: any) => Promise<any>
 }) {
   return () => {
@@ -47,13 +56,12 @@ export function createZRequestHookState<T = ZoteroItemEntity>(opts: {
   }
 }
 
-export const useCollections = createZRequestHookState({
+export const useCollections = createZRequestHookState<ZoteroCollectionEntity>({
   zGetFn: async (opts: any) => {
     return localApi.collections().get(opts)
   }
 })
-
-export const useTopItems = createZRequestHookState({
+export const useTopItems = createZRequestHookState<ZoteroItemEntity>({
   zGetFn: async (opts: any) => {
     opts = { limit: 8 }
     return localApi.items().top().get(opts)

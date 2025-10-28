@@ -15,7 +15,7 @@ function App () {
                 <p>
                     <button disabled={loading}
                             onClick={async () => {
-                                await load()
+                                await load({})
                                 await collectionsState.load({})
                             }}>
                         {loading ? 'Loading...' : 'load zotero top items & collections'}
