@@ -51,7 +51,9 @@ function createZRequestHookState<T = any>(opts: {
         loading.set(true)
         opts1 = { limit: 50, start: items.get().length, ...opts1 }
         const r = await opts.zGetFn(opts1)
-        items.merge(r.getData())
+        const data = r.getData()
+        items.merge(data)
+        return data?.length
       } finally {
         loading.set(false)
       }

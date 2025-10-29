@@ -73,7 +73,7 @@ function App () {
 
     return (
             <>
-                <div>
+                <div className={'flex justify-between'}>
                     <button className={'btn'}
                             disabled={loading}
                             onClick={async () => {
@@ -82,6 +82,11 @@ function App () {
                                 await collectionsState.load({})
                             }}>
                         {loading ? 'Loading...' : 'load zotero top items & collections'}
+                    </button>
+                    <button className={'btn btn-circle'}
+                            onClick={() => logseq.hideMainUI()}
+                    >
+                        X
                     </button>
                 </div>
                 <div>

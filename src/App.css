@@ -1,7 +1,11 @@
 @reference "tailwindcss";
 
 @layer components {
+  html {
+    @apply w-screen h-screen bg-black/30 flex items-center justify-center;
+  }
+
   #root {
-    @apply p-28 sm:max-w-7xl mx-auto;
+    @apply p-12 w-[90vw] h-[80vh] sm:max-w-[1280px] bg-white rounded-xl overflow-y-auto;
   }
 }
