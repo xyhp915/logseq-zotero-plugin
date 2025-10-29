@@ -1,13 +1,13 @@
 // @ts-ignore
 import * as z from 'zotero-api-client'
-import { hookstate, type State, useHookstate } from '@hookstate/core'
+import { hookstate, type Immutable, type State, useHookstate } from '@hookstate/core'
 import { useCallback } from 'react'
 
 function createLocalZoteroAPI() {
   return z.default(import.meta.env.VITE_API_KEY).library('user', import.meta.env.VITE_Z_USER_ID) as any
 }
 
-export const localApi = createLocalZoteroAPI()
+export const zLocalApi = createLocalZoteroAPI()
 
 export type ZoteroItemEntity = {
   key: string,
@@ -73,18 +73,53 @@ function createZRequestHookState<T = any>(opts: {
 export const useCollections = createZRequestHookState<ZoteroCollectionEntity>({
   itemsState: zCollectionsState,
   zGetFn: async (opts: any) => {
-    return localApi.collections().get(opts)
+    return zLocalApi.collections().get(opts)
   }
 })
 export const useTopItems = createZRequestHookState<ZoteroItemEntity>({
   itemsState: zTopItemsState,
   zGetFn: async (opts: any) => {
-    return localApi.items().top().get(opts)
+    return zLocalApi.items().top().get(opts)
   }
 })
 export const useZTags = createZRequestHookState({
   itemsState: zTagsState,
   zGetFn: async (opts: any) => {
-    return localApi.tags().get(opts)
+    return zLocalApi.tags().get(opts)
   }
 })
+
+export function useTopItemsGroupedByCollection() {
+  const collectionsState = useCollections()
+  const topItemsState = useTopItems()
+
+  const groupedCollections: Record<string, ZoteroCollectionEntity> =
+    collectionsState.items?.reduce((acc, coll) => {
+      acc[coll.key] = coll
+      return acc
+    }, {} as any)
+  const groupedItems: Record<string, Immutable<ZoteroItemEntity>[]> = {}
+
+  for (const collection of collectionsState.items) {
+    groupedItems[collection.key] = []
+  }
+
+  groupedItems['uncategorized'] = []
+
+  for (const item of topItemsState.items) {
+    if (item.collections && item.collections.length > 0) {
+      for (const collKey of item.collections) {
+        if (groupedItems[collKey]) {
+          groupedItems[collKey].push(item)
+        }
+      }
+    } else {
+      groupedItems['uncategorized'].push(item)
+    }
+  }
+
+  return {
+    groupedCollections,
+    groupedItems
+  }
+}
