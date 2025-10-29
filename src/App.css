@@ -2,6 +2,6 @@
 
 @layer components {
   #root {
-    @apply p-28;
+    @apply p-28 sm:max-w-7xl mx-auto;
   }
 }
