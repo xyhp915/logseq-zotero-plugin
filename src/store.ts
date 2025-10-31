@@ -1,7 +1,7 @@
 // @ts-ignore
 import * as z from 'zotero-api-client'
 import { hookstate, type Immutable, type State, useHookstate } from '@hookstate/core'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 function createLocalZoteroAPI() {
   return z.default(import.meta.env.VITE_API_KEY).library('user', import.meta.env.VITE_Z_USER_ID) as any
@@ -16,7 +16,7 @@ export type ZoteroItemEntity = {
   note: string,
   dateAdded: string,
   dateModified: string,
-  tags: Array<string>,
+  tags: Array<any>,
   [key: string]: any
 }
 export type ZoteroCollectionEntity = {
@@ -44,14 +44,22 @@ function createZRequestHookState<T = any>(opts: {
     const loading = useHookstate(false)
     const items = useHookstate<T[]>(opts.itemsState)
 
+    const fetch = useCallback(async (opts1: any) => {
+      opts1 = { limit: 50, start: items.get().length, ...opts1 }
+      try {
+        const r = await opts.zGetFn(opts1)
+        return r.getData()
+      } catch (e) {
+        console.error('Zotero API fetch error:', e)
+      }
+    }, [])
+
     const load = useCallback(async (opts1: any) => {
       if (loading.get()) return
 
       try {
         loading.set(true)
-        opts1 = { limit: 50, start: items.get().length, ...opts1 }
-        const r = await opts.zGetFn(opts1)
-        const data = r.getData()
+        const data = await fetch(opts1)
         items.merge(data)
         return data?.length
       } finally {
@@ -64,8 +72,13 @@ function createZRequestHookState<T = any>(opts: {
       loading.set(false)
     }, [])
 
+    const refresh = useCallback(async (opts1: any) => {
+      reset()
+      await load(opts1)
+    }, [])
+
     return {
-      load, reset,
+      fetch, load, reset, refresh,
       loading: loading.get(),
       items: items.get()
     }
@@ -124,4 +137,32 @@ export function useTopItemsGroupedByCollection() {
     groupedCollections,
     groupedItems
   }
+}
+
+export function useCacheZEntitiesEffects() {
+  const zTagsState1 = useZTags()
+  const zCollectionsState1 = useCollections()
+  const persistData = useCallback((k: string, data: any) => {
+    localStorage.setItem(`zotero_cache_${k}`, JSON.stringify(data))
+  }, [])
+  const restoreData = useCallback((k: string) => {
+    const data = localStorage.getItem(`zotero_cache_${k}`)
+    return data ? JSON.parse(data) : null
+  }, [])
+
+  // restore cached entities on mount
+  useEffect(() => {
+    const cachedTags = restoreData('tags')
+    zTagsState.set(cachedTags ?? [])
+    const cachedCollections = restoreData('collections')
+    zCollectionsState.set(cachedCollections ?? [])
+  }, [])
+
+  useEffect(() => {
+    persistData('tags', zTagsState1.items)
+  }, [zTagsState1.items?.length])
+
+  useEffect(() => {
+    persistData('collections', zCollectionsState1.items)
+  }, [zCollectionsState1.items?.length])
 }

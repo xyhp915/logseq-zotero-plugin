@@ -1,5 +1,6 @@
 import './App.css'
 import {
+    useCacheZEntitiesEffects,
     useCollections,
     useTopItems,
     useTopItemsGroupedByCollection,
@@ -21,7 +22,11 @@ function ItemEntityRow (props: PropsWithChildren<{ item: Immutable<ZoteroItemEnt
             >
                 <strong className={'whitespace-nowrap'}>{item.title}</strong>
                 <i>{item.itemType}</i>
-                <code>{JSON.stringify(item.tags)}</code>
+                {item.tags?.map(t => {
+                    return (<code key={t.tag} className={'badge badge-neutral badge-soft'}>
+                        {t.tag}
+                    </code>)
+                })}
             </a>
     )
 }
@@ -62,7 +67,10 @@ function GroupedItemsTabsContainer () {
 }
 
 function App () {
-    const { load, loading, items } = useTopItems()
+    // initialize effects
+    useCacheZEntitiesEffects()
+
+    const zTopItemsState = useTopItems()
     const collectionsState = useCollections()
     const zTagsState = useZTags()
     const [groupedCollectionsView, setGroupedCollectionsView] = useState(false)
@@ -73,16 +81,7 @@ function App () {
 
     return (
             <>
-                <div className={'flex justify-between'}>
-                    <button className={'btn'}
-                            disabled={loading}
-                            onClick={async () => {
-                                await zTagsState.load({})
-                                await load({})
-                                await collectionsState.load({})
-                            }}>
-                        {loading ? 'Loading...' : 'load zotero top items & collections'}
-                    </button>
+                <div className={'flex justify-end'}>
                     <button className={'btn btn-circle'}
                             onClick={() => logseq.hideMainUI()}
                     >
@@ -94,6 +93,13 @@ function App () {
                         <h3 className={'py-4 text-6xl'}>
                             zotero Tags:
                         </h3>
+                        <button className={'btn'}
+                                disabled={zTagsState.loading}
+                                onClick={async () => {
+                                    await zTagsState.refresh({})
+                                }}>
+                            {zTagsState.loading ? 'Loading...' : 'load zotero tags'}
+                        </button>
                     </div>
                     <div className={'p-2 flex gap-3 flex-wrap'}>
                         {zTagsState.items?.map(it => {
@@ -104,36 +110,24 @@ function App () {
                         })}
                     </div>
                 </div>
-                <div>
-                    <div className={'flex gap-8 items-center'}>
-                        <h3 className={'py-4 text-6xl'}>
-                            zotero items:
-                        </h3>
-                        <button className={cn('btn btn-link mt-3', loading && 'loading')}
-                                onClick={async () => {
-                                    await load({
-                                        itemType: 'book',
-                                    })
-                                }}
-                        >
-                            load more
-                        </button>
-                    </div>
-                    <div className={'p-2'}>
-                        {items?.map(it => {
-                            return <ItemEntityRow item={it}/>
-                        })}
-                    </div>
-                </div>
+
                 <div>
                     <div className={'flex gap-4 items-center'}>
                         <h3 className={'py-4 text-6xl'}>zotero collections:</h3>
-                        <button
-                                onClick={() => setGroupedCollectionsView(v => !v)}
-                                className={'btn mt-4'}
-                        >
-                            toggle grouped view
+                        <button className={'btn mt-4'}
+                                disabled={collectionsState.loading}
+                                onClick={async () => {
+                                    await collectionsState.refresh({})
+                                }}>
+                            {collectionsState.loading ? 'Loading...' : 'load zotero collections'}
                         </button>
+                        <label className="label pt-5">
+                            <input type="checkbox"
+                                   onChange={e => setGroupedCollectionsView(e.target.checked)}
+                                   defaultChecked={false}
+                                   className="toggle toggle-warning"/>
+                            Toggle grouped view
+                        </label>
                     </div>
                     <Activity mode={groupedCollectionsView ? 'hidden' : 'visible'}>
                         <ul className={'p-2'}>
@@ -147,6 +141,35 @@ function App () {
                     <Activity mode={groupedCollectionsView ? 'visible' : 'hidden'}>
                         <GroupedItemsTabsContainer/>
                     </Activity>
+                </div>
+
+                <div>
+                    <div className={'flex gap-8 items-center'}>
+                        <h3 className={'py-4 text-6xl'}>
+                            zotero items:
+                        </h3>
+                        <button className={'btn'}
+                                disabled={zTopItemsState.loading}
+                                onClick={async () => {
+                                    await zTopItemsState.load({})
+                                }}>
+                            {zTopItemsState.loading ? 'Loading...' : 'load zotero top items'}
+                        </button>
+                        {/*<button className={cn('btn btn-link mt-3', zTopItemsState.loading && 'loading')}*/}
+                        {/*        onClick={async () => {*/}
+                        {/*            await zTopItemsState.load({*/}
+                        {/*                itemType: 'book',*/}
+                        {/*            })*/}
+                        {/*        }}*/}
+                        {/*>*/}
+                        {/*    load more*/}
+                        {/*</button>*/}
+                    </div>
+                    <div className={'p-2'}>
+                        {zTopItemsState.items?.map(it => {
+                            return <ItemEntityRow item={it}/>
+                        })}
+                    </div>
                 </div>
             </>
     )

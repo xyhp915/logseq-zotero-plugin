@@ -13,6 +13,7 @@
     "classnames": "^2.5.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "uuid": "^13.0.0",
     "zotero-api-client": "^0.47.0"
   },
   "devDependencies": {
