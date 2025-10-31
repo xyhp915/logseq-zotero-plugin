@@ -11,6 +11,7 @@
     "@hookstate/core": "^4.0.2",
     "@logseq/libs": "^0.2.3",
     "classnames": "^2.5.1",
+    "lucide-react": "^0.548.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "uuid": "^13.0.0",

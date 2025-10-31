@@ -142,6 +142,7 @@ export function useTopItemsGroupedByCollection() {
 export function useCacheZEntitiesEffects() {
   const zTagsState1 = useZTags()
   const zCollectionsState1 = useCollections()
+  const zTopItemsState1 = useTopItems()
   const persistData = useCallback((k: string, data: any) => {
     localStorage.setItem(`zotero_cache_${k}`, JSON.stringify(data))
   }, [])
@@ -156,6 +157,8 @@ export function useCacheZEntitiesEffects() {
     zTagsState.set(cachedTags ?? [])
     const cachedCollections = restoreData('collections')
     zCollectionsState.set(cachedCollections ?? [])
+    const cachedTopItems = restoreData('topItems')
+    zTopItemsState.set(cachedTopItems ?? [])
   }, [])
 
   useEffect(() => {
@@ -165,4 +168,8 @@ export function useCacheZEntitiesEffects() {
   useEffect(() => {
     persistData('collections', zCollectionsState1.items)
   }, [zCollectionsState1.items?.length])
+
+  useEffect(() => {
+    persistData('topItems', zTopItemsState1.items)
+  }, [zTopItemsState1.items?.[0]?.key])
 }
