@@ -32,9 +32,15 @@ export type ZoteroTagEntity = {
   meta: any
 }
 
-const zTopItemsState = hookstate<Array<ZoteroItemEntity>>([])
-const zCollectionsState = hookstate<Array<ZoteroCollectionEntity>>([])
-const zTagsState = hookstate<Array<ZoteroTagEntity>>([])
+export const appState = hookstate({
+  isVisible: true,
+  isPushing: false, // sync to logseq
+  pushingLogs: [''],
+  pushingError: ''
+})
+export const zTopItemsState = hookstate<Array<ZoteroItemEntity>>([])
+export const zCollectionsState = hookstate<Array<ZoteroCollectionEntity>>([])
+export const zTagsState = hookstate<Array<ZoteroTagEntity>>([])
 
 function createZRequestHookState<T = any>(opts: {
   itemsState: State<T[], {}>,
@@ -85,6 +91,28 @@ function createZRequestHookState<T = any>(opts: {
   }
 }
 
+function createLoggerActions(state: State<Array<string>>) {
+  const actions = ['log', 'error', 'clear']
+  return actions.reduce((acc, action: string) => {
+    acc[action] = (msg: any) => {
+      if (action === 'clear') {
+        state.set([])
+      } else {
+        const isError = action === 'error'
+        const prefix = isError ? '[ERROR]' : '[LOG]'
+        const timestamp = new Date().toLocaleTimeString()
+        state.merge([`${timestamp} ${prefix} ${String(msg)}`])
+        if (isError) console.error(msg)
+      }
+    }
+    return acc
+  }, {} as any)
+}
+
+export const pushingLogger = createLoggerActions(appState.pushingLogs)
+export const useAppState = () => {
+  return useHookstate(appState)
+}
 export const useCollections = createZRequestHookState<ZoteroCollectionEntity>({
   itemsState: zCollectionsState,
   zGetFn: async (opts: any) => {

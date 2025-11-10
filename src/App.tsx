@@ -1,5 +1,6 @@
 import './App.css'
 import {
+  useAppState,
   useCacheZEntitiesEffects,
   useCollections,
   useTopItems,
@@ -7,10 +8,12 @@ import {
   useZTags,
   type ZoteroItemEntity,
 } from './store.ts'
-import { Activity, useEffect, useState } from 'react'
+import { Activity, type PropsWithChildren, useEffect, useState } from 'react'
 import cn from 'classnames'
 import type { ImmutableArray } from '@hookstate/core'
 import { LucideFileUp, LucideRefreshCcwDot } from 'lucide-react'
+import { pushItemToLogseq, pushItemTypesToLogseqTag } from './handlers.ts'
+import { closeMainDialog } from './common.ts'
 
 function GroupedItemsTabsContainer () {
   const { groupedItems, groupedCollections } = useTopItemsGroupedByCollection()
@@ -81,8 +84,8 @@ function EntityItemsTableContainer (
                 <td>{it.tags?.[0]?.tag}</td>
                 <td>
                   <button className={'btn btn-xs btn-ghost'}
-                          onClick={() => {
-                            console.log('==>', it)
+                          onClick={async () => {
+                            await pushItemToLogseq(it)
                           }}
                   >
                     <LucideFileUp size={14}/>
@@ -96,10 +99,36 @@ function EntityItemsTableContainer (
   )
 }
 
+function AppContainer (
+    props: PropsWithChildren<any>,
+) {
+  // setup shortcuts, global styles, etc.
+  useEffect(() => {
+    // close UI on ESC
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeMainDialog()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [])
+
+  return (<div className="app-container">
+        {props.children}
+      </div>
+  )
+}
+
 function App () {
   // initialize effects
   useCacheZEntitiesEffects()
 
+  const appState = useAppState()
   const zTopItemsState = useTopItems()
   const collectionsState = useCollections()
   const zTagsState = useZTags()
@@ -109,11 +138,22 @@ function App () {
     console.log('==>> collections:', collectionsState.items)
   }, [collectionsState.items])
 
+  if (!appState.isVisible.get()) {
+    return <></>
+  }
+
   return (
-      <>
-        <div className={'flex justify-end'}>
+      <AppContainer>
+        <div className={'flex justify-between'}>
+          <button className={'btn'}
+                  onClick={async () => {
+                    await pushItemTypesToLogseqTag()
+                  }}
+          >
+            Push Item Types to Logseq
+          </button>
           <button className={'btn btn-circle'}
-                  onClick={() => logseq.hideMainUI()}
+                  onClick={() => closeMainDialog()}
           >
             X
           </button>
@@ -201,7 +241,7 @@ function App () {
             <EntityItemsTableContainer items={zTopItemsState.items}/>
           </div>
         </div>
-      </>
+      </AppContainer>
   )
 }
 
