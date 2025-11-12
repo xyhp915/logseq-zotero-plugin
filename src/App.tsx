@@ -110,7 +110,7 @@ function EntityItemsTableContainer(
 ) {
   return (
     <table className="table table-xs border collapse">
-      <thead className={'bg-gray-100'}>
+      <thead className={'bg-base-200'}>
       <tr>
         <th>Key</th>
         <th>Title</th>
@@ -124,7 +124,7 @@ function EntityItemsTableContainer(
       <tbody>
       {props.items?.map(it => {
         return (
-          <tr key={it.key} className={'even:bg-gray-50'}>
+          <tr key={it.key} className={'even:bg-base-200'}>
             <td>{it.key}</td>
             <td>
               <a onClick={() => {

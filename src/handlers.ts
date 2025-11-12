@@ -76,8 +76,7 @@ export async function pushItemToLogseq(
   const itemTag = await logseq.Editor.getTag(item.itemType)
 
   if (!itemTag) {
-    console.error('Item type tag not found in Logseq:', item.itemType)
-    return
+    throw new Error('Logseq tag not found for item type: ' + item.itemType)
   }
 
   await logseq.Editor.addBlockTag(page!.uuid, itemTag.uuid)
