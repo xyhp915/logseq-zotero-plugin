@@ -132,6 +132,14 @@ export const useZTags = createZRequestHookState({
   }
 })
 
+// @ts-ignore
+window.__state__ = {
+  appState,
+  zTopItemsState,
+  zCollectionsState,
+  zTagsState
+}
+
 export function useTopItemsGroupedByCollection() {
   const collectionsState = useCollections()
   const topItemsState = useTopItems()

@@ -1,6 +1,6 @@
 import { appState, type ZoteroItemEntity } from './store.ts'
 import type { Immutable } from '@hookstate/core'
-import { id2UUID } from './common.ts'
+import { delay, id2UUID } from './common.ts'
 
 export async function pushItemTypesToLogseqTag() {
   const { default: { itemTypes } } = await import('./assets/z_item_types.json')
@@ -16,27 +16,34 @@ export async function pushItemTypesToLogseqTag() {
     await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'key')
   }
 
-  const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis']
+  const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis',
+    'report', 'document', 'magazineArticle', 'newspaperArticle', 'videoRecording', 'bookSection'
+  ]
 
   // 2. create tags for each item type and their fields
   for (const itemType of itemTypes) {
     let tagName = itemType.itemType
     if (!tagName || !pickedItemTypes.includes(tagName)) continue
-    const fullTagName = `Zotero/${tagName}`
-    const tagUUID = id2UUID(fullTagName)
-    let tag = await logseq.Editor.getPage(tagUUID)
-    console.log('Z:Fetched tag:', tagName, tagUUID, tag)
+    // @ts-ignore
+    let tag = await logseq.Editor.getTag(tagName)
+    console.log('Z:Fetched tag:', tagName, tag)
     if (!tag) {
-      // @ts-ignore
-      tag = await logseq.Editor.createTag(fullTagName, { uuid: tagUUID })
-      console.log('Z:Created tag:', tagName, tagUUID, tag)
+      tag = await logseq.Editor.createTag(tagName)
+      await logseq.Editor.upsertBlockProperty(tag!.uuid, ':logseq.property.class/extends', [zRootTag?.id])
+      console.log('Z:Created tag:', tagName, tag)
     }
 
     for (const field of itemType.fields) {
       const fieldName = field.field
-      await logseq.Editor.upsertProperty(fieldName, { type: 'default' })
-      await logseq.Editor.addTagProperty(tag?.uuid!, fieldName)
+      try {
+        await logseq.Editor.upsertProperty(fieldName, { type: 'default' })
+        await logseq.Editor.addTagProperty(tag?.uuid!, fieldName)
+      } catch (e) {
+        console.error('Error adding property to tag:', tagName, fieldName, e)
+      }
     }
+
+    await delay()
   }
 }
 
@@ -52,7 +59,7 @@ export async function pushItemToLogseq(
   const pageTitle = item.title || 'Untitled'
   let page = await logseq.Editor.getPage(pageUUID)
 
-  console.log('==> Fetched page from Logseq:', page)
+  console.log('>> Fetched page from Logseq:', page)
 
   if (!page) {
     page = await logseq.Editor.createPage(
@@ -62,14 +69,19 @@ export async function pushItemToLogseq(
         redirect: false
       } as any
     )
-    console.log('==>> Created new Z page in Logseq:', page)
+    console.log('>> Created new Z page in Logseq:', page)
   }
 
   // add tag with item type
-  const itemTypeTagName = `Zotero/${item.itemType}`
-  const itemTypeTagUUID = id2UUID(itemTypeTagName)
-  console.log('Adding tag to page:', itemTypeTagName)
-  await logseq.Editor.addBlockTag(page!.uuid, itemTypeTagUUID)
+  const itemTag = await logseq.Editor.getTag(item.itemType)
+
+  if (!itemTag) {
+    console.error('Item type tag not found in Logseq:', item.itemType)
+    return
+  }
+
+  await logseq.Editor.addBlockTag(page!.uuid, itemTag.uuid)
+  console.log('Adding tag to page:')
 
   // upsert block properties value
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', item.key || '')
@@ -89,6 +101,22 @@ export async function pushItemToLogseq(
 
   console.log('Created notes block for item:', notesBlock)
   // await logseq.Editor.upsertBlockProperty(page!.uuid, 'note', item.note || '')
+
+  return pageUUID
+}
+
+export async function openItemInLogseq(
+  item: Immutable<ZoteroItemEntity>
+) {
+  const pageUUID = id2UUID(item.key)
+  const page = await logseq.Editor.getPage(pageUUID)
+
+  if (page) {
+    logseq.App.pushState('page', { name: page.name, uuid: page.uuid })
+  } else {
+    await logseq.UI.showMsg(`Logseq page not found for item: ${item.title || 'Untitled'}`, 'error')
+    throw new Error('Logseq page not found for item: ' + (item.title || 'Untitled'))
+  }
 }
 
 export async function startFullPushToLogseq() {
