@@ -26,11 +26,11 @@ export async function pushItemTypesToLogseqTag() {
     if (!tagName || !pickedItemTypes.includes(tagName)) continue
     // @ts-ignore
     let tag = await logseq.Editor.getTag(tagName)
-    console.log('Z:Fetched tag:', tagName, tag)
+    console.log('Fetched tag:', tagName, tag)
     if (!tag) {
       tag = await logseq.Editor.createTag(tagName)
       await logseq.Editor.upsertBlockProperty(tag!.uuid, ':logseq.property.class/extends', [zRootTag?.id])
-      console.log('Z:Created tag:', tagName, tag)
+      console.log('Created tag:', tagName, tag)
     }
 
     for (const field of itemType.fields) {

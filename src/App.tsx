@@ -7,9 +7,9 @@ import {
   useTopItemsGroupedByCollection,
   type ZoteroItemEntity,
 } from './store.ts'
-import { type PropsWithChildren, useEffect, useState } from 'react'
+import { type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import { type Immutable, type ImmutableArray, useHookstate } from '@hookstate/core'
+import { type Immutable, type ImmutableArray, type State, type StateMethods, useHookstate } from '@hookstate/core'
 import {
   LucideDownload, LucideExternalLink,
   LucideFileUp, LucideLink2, LucideLoader, LucideLoader2,
@@ -105,19 +105,55 @@ function PushItemButton({ item }: { item: Immutable<ZoteroItemEntity> }) {
 
 function EntityItemsTableContainer(
   props: {
-    items: ImmutableArray<ZoteroItemEntity>
+    items: ImmutableArray<ZoteroItemEntity>,
+    onCheckedItemsChange?: (checkedItemsState: State<any>, someKeysChecked: boolean) => void
   },
 ) {
+  const checkedItemsState = useHookstate<{ [key: string]: boolean }>({})
+  const checkedInputRef = useRef<HTMLInputElement>(null)
+  const checkedChangedState = useHookstate(0)
+
+  useEffect(() => {
+    const allKeysChecked = props.items?.every(it => checkedItemsState[it.key].get())
+    const someKeysChecked = props.items?.some(it => checkedItemsState[it.key].get())
+
+    if (checkedInputRef.current) {
+      checkedInputRef.current.indeterminate = !allKeysChecked && someKeysChecked
+      checkedInputRef.current.checked = allKeysChecked || false
+    }
+
+    if (props.onCheckedItemsChange) {
+      props.onCheckedItemsChange(checkedItemsState, someKeysChecked)
+    }
+  }, [checkedChangedState.get()])
+
   return (
     <table className="table table-xs border collapse">
       <thead className={'bg-base-200'}>
       <tr>
-        <th>Key</th>
+        <th>
+          <label>
+            <input className={'checkbox checkbox-sm'}
+                   type="checkbox"
+                   ref={checkedInputRef}
+                   defaultChecked={false}
+                   onChange={e => {
+                     const checked = e.target.checked
+                     const newCheckedState: { [key: string]: boolean } = {}
+                     props.items?.forEach(it => {
+                       newCheckedState[it.key] = checked
+                     })
+                     checkedItemsState.set(newCheckedState)
+                     checkedChangedState.set(p => p + 1)
+                   }}
+            />
+          </label>
+        </th>
         <th>Title</th>
         <th>Type</th>
         <th>Collections</th>
         <th>Attachments</th>
-        <th>Note</th>
+        <th>dateModified</th>
         <th>More</th>
       </tr>
       </thead>
@@ -125,7 +161,17 @@ function EntityItemsTableContainer(
       {props.items?.map(it => {
         return (
           <tr key={it.key} className={'even:bg-base-200'}>
-            <td>{it.key}</td>
+            <td>
+              <label className={'flex items-center'}>
+                <input className={'checkbox checkbox-sm mr-2'} type="checkbox"
+                       checked={checkedItemsState[it.key].get() || false}
+                       onChange={e => {
+                         checkedItemsState[it.key].set(e.target.checked)
+                         checkedChangedState.set(p => p + 1)
+                       }}
+                />
+              </label>
+            </td>
             <td>
               <a onClick={() => {
                 alert(JSON.stringify(it, null, 2))
@@ -140,7 +186,7 @@ function EntityItemsTableContainer(
               <CollectionsLabels itemCollectionKeys={it.collections}/>
             </td>
             <td>{JSON.stringify(it.attachments)}</td>
-            <td>{it.note}</td>
+            <td>{it.dateModified}</td>
             {/*<td>{it.tags?.[0]?.tag}</td>*/}
             <td className={'flex'}>
               <PushItemButton item={it}/>
@@ -200,6 +246,8 @@ function App() {
   const collectionsState = useCollections()
   // const zTagsState = useZTags()
   // const [groupedCollectionsView, setGroupedCollectionsView] = useState(false)
+  const someItemsCheckedState = useHookstate(false)
+  const itemsCheckedStateRef = useRef<State<any, any>>(null)
 
   useEffect(() => {
     console.log('>> collections:', collectionsState.items)
@@ -230,7 +278,7 @@ function App() {
             ) : (
               <LucideDownload size={18}/>
             )}
-            Sync remote Zotero Data
+            Pull remote Zotero items
           </button>
           <span className={'label text-sm'}>
             {isSyncingRemote ? 'Syncing...' : ` ${zTopItemsState.items.length} items loaded.`}
@@ -239,16 +287,49 @@ function App() {
 
         <div className={'flex gap-3'}>
           {zTopItemsState.items.length > 0 && (
-            <button className={'btn btn-sm btn-outline btn-success'}
-                    onClick={async () => {
-                      await startFullPushToLogseq()
-                    }}
-                    disabled={appState.isPushing.get()}
+            <button
+              className={cn('btn btn-sm btn-outline', someItemsCheckedState.get() ? 'btn-dash btn-accent' : 'btn-success')}
+              onClick={async () => {
+                if (someItemsCheckedState.get()) {
+                  // push selected items
+                  const checkedItems = zTopItemsState.items.filter(it => {
+                    return itemsCheckedStateRef.current?.get()?.[it.key]
+                  })
+
+                  if (checkedItems.length === 0) {
+                    await logseq.UI.showMsg(
+                      `No items selected to push to Logseq.`, 'warning'
+                    )
+                    return
+                  }
+
+                  appState.isPushing.set(true)
+                  for (const item of checkedItems) {
+                    try {
+                      await pushItemToLogseq(item)
+                      await logseq.UI.showMsg(
+                        `Item "${item.title}" pushed to Logseq page.`, 'success'
+                      )
+                      await delay(100)
+                    } catch (e) {
+                      await logseq.UI.showMsg(
+                        `Error pushing item "${item.title}" to Logseq: ${e}`, 'error'
+                      )
+                      console.error(e)
+                    }
+                  }
+                  appState.isPushing.set(false)
+                } else {
+                  // push all items
+                  await startFullPushToLogseq()
+                }
+              }}
+              disabled={appState.isPushing.get()}
             >
               {appState.isPushing.get() ? (
                 <LucideLoader2 size={18} className={'animate-spin'}/>) : (
                 <LucideUpload size={18}/>)}
-              Push all to Logseq
+              {someItemsCheckedState.get() ? 'Push selected to Logseq' : 'Push all to Logseq'}
             </button>
           )}
           <button className={'btn btn-circle btn-sm btn-outline'}
@@ -327,7 +408,13 @@ function App() {
           {/*</button>*/}
         </div>
         <div className={'py-4'}>
-          <EntityItemsTableContainer items={zTopItemsState.items}/>
+          <EntityItemsTableContainer
+            items={zTopItemsState.items}
+            onCheckedItemsChange={(checkedItemsState1, someKeysChecked) => {
+              someItemsCheckedState.set(someKeysChecked)
+              itemsCheckedStateRef.current = checkedItemsState1
+            }}
+          />
         </div>
       </div>
     </AppContainer>
