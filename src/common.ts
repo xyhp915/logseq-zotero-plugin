@@ -1,4 +1,5 @@
 import { v5 } from 'uuid'
+import { appState } from './store.ts'
 
 export const isInLogseq = location.href.includes('v=lsp')
 
@@ -9,6 +10,7 @@ export function id2UUID(id: string): string {
 }
 
 export function closeMainDialog() {
+  if (appState.isPushing.get()) return
   logseq?.hideMainUI()
 }
 

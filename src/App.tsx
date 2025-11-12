@@ -131,7 +131,7 @@ function EntityItemsTableContainer(
     <table className="table table-xs border collapse">
       <thead className={'bg-base-200'}>
       <tr>
-        <th>
+        <th className={'w-[16px] pr-0'}>
           <label>
             <input className={'checkbox checkbox-sm'}
                    type="checkbox"
@@ -163,7 +163,7 @@ function EntityItemsTableContainer(
           <tr key={it.key} className={'even:bg-base-200'}>
             <td>
               <label className={'flex items-center'}>
-                <input className={'checkbox checkbox-sm mr-2'} type="checkbox"
+                <input className={'checkbox checkbox-sm'} type="checkbox"
                        checked={checkedItemsState[it.key].get() || false}
                        onChange={e => {
                          checkedItemsState[it.key].set(e.target.checked)
@@ -173,8 +173,13 @@ function EntityItemsTableContainer(
               </label>
             </td>
             <td>
-              <a onClick={() => {
-                alert(JSON.stringify(it, null, 2))
+              <a href={'#'}
+                onClick={(e) => {
+                console.log(JSON.stringify(it, null, 2))
+                  // selected row
+                  const target = e.currentTarget
+                  const rowInput = target.closest('tr')?.querySelector('input[type="checkbox"]') as HTMLInputElement
+                  rowInput?.click()
               }}>
                 <strong>
                   {it.title}
@@ -329,7 +334,7 @@ function App() {
               {appState.isPushing.get() ? (
                 <LucideLoader2 size={18} className={'animate-spin'}/>) : (
                 <LucideUpload size={18}/>)}
-              {someItemsCheckedState.get() ? 'Push selected to Logseq' : 'Push all to Logseq'}
+              {someItemsCheckedState.get() ? 'Push selected items to Logseq' : 'Push all items to Logseq'}
             </button>
           )}
           <button className={'btn btn-circle btn-sm btn-outline'}
