@@ -1,6 +1,6 @@
 // @ts-ignore
 import * as z from 'zotero-api-client'
-import { hookstate, type Immutable, type State, useHookstate } from '@hookstate/core'
+import { hookstate, type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import { useCallback, useEffect } from 'react'
 
 function createLocalZoteroAPI() {
@@ -212,15 +212,38 @@ export function useCacheZEntitiesEffects() {
   }, [zTopItemsState1.items?.[0]?.key])
 }
 
-export function usePaginatedTopItems({
-  limit
-}: { limit: number }) {
+export function useFilteredTopItems() {
   const zTopItemsState1 = useTopItems()
+  const filterTextState = useHookstate('')
+
+  const filteredItems = zTopItemsState1.items.filter(item => {
+    const filterText = filterTextState.get().toLowerCase()
+    if (!filterText) return true
+    const title = item.title?.toLowerCase() || ''
+    const itemType = item.itemType?.toLowerCase() || ''
+    const tags = (item.tags || []).map((t: any) => t.tag.toLowerCase()).join(' ')
+    return title.includes(filterText) ||
+      itemType.includes(filterText) ||
+      tags.includes(filterText)
+  })
+
+  return {
+    filterText: filterTextState.get(),
+    setFilterText: (text: string) => filterTextState.set(text),
+    filteredItems
+  }
+}
+
+export function usePaginatedTopItems({
+  filteredItems,
+  limit
+}: { limit: number, filteredItems: ImmutableArray<ZoteroItemEntity> }) {
+  const filteredItemsState = useFilteredTopItems()
   const currentPageState = useHookstate(0)
   limit = limit ?? 10
-  const totalItems = zTopItemsState1.items.length
+  const totalItems = filteredItems.length
   const totalPages = Math.ceil(totalItems / limit)
-  const paginatedItems = zTopItemsState1.items.slice(
+  const paginatedItems = filteredItems.slice(
     currentPageState.get() * limit,
     (currentPageState.get() + 1) * limit
   )

@@ -2,7 +2,7 @@ import './App.css'
 import {
   useAppState,
   useCacheZEntitiesEffects,
-  useCollections,
+  useCollections, useFilteredTopItems,
   usePaginatedTopItems,
   useTopItems,
   useTopItemsGroupedByCollection,
@@ -266,7 +266,11 @@ function App() {
   const checkedItemsCountState = useHookstate(0)
   const checkedItemsStateRef = useRef<State<any, any>>(null)
   const currentTabState = useHookstate<'all-items' | 'settings'>('all-items')
-  const paginatedTopItems = usePaginatedTopItems({ limit: 20 })
+  const filteredTopItemsState = useFilteredTopItems()
+  const paginatedTopItems = usePaginatedTopItems({
+    limit: 6,
+    filteredItems: filteredTopItemsState.filteredItems
+  })
 
   useEffect(() => {
     const isPushing = appState.isPushing.get()
