@@ -9,17 +9,19 @@ import {
 } from './store.ts'
 import { type PropsWithChildren, useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import { type Immutable, type ImmutableArray, type State, type StateMethods, useHookstate } from '@hookstate/core'
+import { type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import {
-  LucideDownload, LucideExternalLink,
-  LucideFileUp, LucideLink2, LucideLoader, LucideLoader2,
-  LucideRefreshCcwDot,
-  LucideSettings,
+  LucideDownload,
+  LucideExternalLink,
+  LucideList,
+  LucideLoader2,
+  LucideMinus,
   LucideSettings2,
   LucideUpload,
+  LucideX,
 } from 'lucide-react'
-import { openItemInLogseq, pushItemToLogseq, pushItemTypesToLogseqTag, startFullPushToLogseq } from './handlers.ts'
-import { closeMainDialog, delay, id2UUID } from './common.ts'
+import { openItemInLogseq, pushItemToLogseq, startFullPushToLogseq } from './handlers.ts'
+import { closeMainDialog, delay, getItemTitle } from './common.ts'
 
 function GroupedItemsTabsContainer () {
   const { groupedItems, groupedCollections } = useTopItemsGroupedByCollection()
@@ -153,7 +155,6 @@ function EntityItemsTableContainer (
           <th>Title</th>
           <th>Type</th>
           <th>Collections</th>
-          <th>Attachments</th>
           <th>dateModified</th>
           <th>More</th>
         </tr>
@@ -185,7 +186,7 @@ function EntityItemsTableContainer (
                        rowInput?.click()
                      }}>
                     <strong>
-                      {it.title}
+                      {getItemTitle(it)}
                     </strong>
                   </a>
                 </td>
@@ -193,7 +194,6 @@ function EntityItemsTableContainer (
                 <td>
                   <CollectionsLabels itemCollectionKeys={it.collections}/>
                 </td>
-                <td>{JSON.stringify(it.attachments)}</td>
                 <td>{it.dateModified}</td>
                 {/*<td>{it.tags?.[0]?.tag}</td>*/}
                 <td className={'flex'}>
@@ -245,6 +245,15 @@ function AppContainer (
   )
 }
 
+function SettingsTabContainer () {
+  return (
+      <div>
+        <h2 className={'text-lg font-bold mb-4'}>Settings</h2>
+        <p>Settings content goes here.</p>
+      </div>
+  )
+}
+
 function App () {
   // initialize effects
   useCacheZEntitiesEffects()
@@ -256,6 +265,7 @@ function App () {
   // const [groupedCollectionsView, setGroupedCollectionsView] = useState(false)
   const checkedItemsCountState = useHookstate(0)
   const checkedItemsStateRef = useRef<State<any, any>>(null)
+  const currentTabState = useHookstate<'all-items' | 'settings'>('all-items')
 
   useEffect(() => {
     const isPushing = appState.isPushing.get()
@@ -288,9 +298,30 @@ function App () {
       <AppContainer>
         <div className={'flex justify-between'}>
           <div className={'flex gap-3'}>
-            <button className={'btn btn-sm'}>
-              <LucideSettings2 size={18}/> Settings
-            </button>
+            <div role="tablist" className="tabs tabs-lift">
+              <a role="tab" className={cn('tab', currentTabState.get() === 'all-items' && 'tab-active')}
+                 onClick={() => currentTabState.set('all-items')}
+              >
+                <LucideList size={18}/>
+                <span className={'pl-1.5'}>
+                  All Zotero top items ({zTopItemsState.items.length})
+                </span>
+              </a>
+              <a role="tab" className={cn('tab', currentTabState.get() === 'settings' && 'tab-active')}
+                 onClick={() => currentTabState.set('settings')}
+              >
+                <LucideSettings2 size={18}/>
+                <span className={'pl-1.5'}>
+                  Settings
+                </span>
+              </a>
+            </div>
+          </div>
+
+          <div className={'flex gap-4 items-center'}>
+            <span className={'label text-sm'}>
+                {isSyncingRemote ? 'Syncing...' : ` ${zTopItemsState.items.length} top items loaded.`}
+            </span>
             <button className={'btn btn-sm'}
                     onClick={async () => {
                       await collectionsState.refresh({})
@@ -303,14 +334,9 @@ function App () {
               ) : (
                   <LucideDownload size={18}/>
               )}
-              Pull remote Zotero items
+              Pull remote Zotero top items
             </button>
-            <span className={'label text-sm'}>
-            {isSyncingRemote ? 'Syncing...' : ` ${zTopItemsState.items.length} items loaded.`}
-          </span>
-          </div>
 
-          <div className={'flex gap-3'}>
             {zTopItemsState.items.length > 0 && (
                 <button
                     className={cn('btn btn-sm btn-outline',
@@ -338,22 +364,48 @@ function App () {
                       : 'Push all items to Logseq'}
                 </button>
             )}
-            <button className={'btn btn-circle btn-sm btn-outline'}
-                    onClick={() => closeMainDialog()}
+            <button className={cn('btn btn-circle btn-xs btn-outline',
+                checkedItemsCountState.get() ? 'btn-warning btn-dash' : '')}
+                    onClick={() => {
+                      if (checkedItemsCountState.get() > 0) {
+                        checkedItemsStateRef.current?.set({})
+                        checkedItemsCountState.set(0)
+                      } else {
+                        closeMainDialog()
+                      }
+                    }}
             >
-              X
+              {checkedItemsCountState.get() ?
+                  <LucideMinus size={14}/> :
+                  <LucideX size={14}/>}
             </button>
           </div>
         </div>
 
-        <div className={'py-4'}>
-          <EntityItemsTableContainer
-              items={zTopItemsState.items}
-              onCheckedItemsChange={(checkedItemsState1, checkedItemsCount) => {
-                checkedItemsCountState.set(checkedItemsCount)
-                checkedItemsStateRef.current = checkedItemsState1
-              }}
-          />
+        <div className={'py-4 min-h-[300px]'}>
+          {currentTabState.get() === 'settings' ? (
+              <SettingsTabContainer/>) : (
+              <>
+                <div className={'table-container'}>
+                  <EntityItemsTableContainer
+                      items={zTopItemsState.items}
+                      onCheckedItemsChange={(checkedItemsState1, checkedItemsCount) => {
+                        checkedItemsCountState.set(checkedItemsCount)
+                        checkedItemsStateRef.current = checkedItemsState1
+                      }}
+                  />
+                </div>
+                <div className={'flex justify-end pt-4 -mb-4'}>
+                  <div className="join">
+                    <button className="join-item btn btn-xs">1</button>
+                    <button className="join-item btn btn-xs">2</button>
+                    <button className="join-item btn btn-disabled btn-xs">...</button>
+                    <button className="join-item btn btn-xs">99</button>
+                    <button className="join-item btn btn-xs">100</button>
+                  </div>
+                </div>
+              </>
+          )}
         </div>
       </AppContainer>
   )

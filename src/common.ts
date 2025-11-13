@@ -1,5 +1,6 @@
 import { v5 } from 'uuid'
-import { appState } from './store.ts'
+import { appState, type ZoteroItemEntity } from './store.ts'
+import type { Immutable } from '@hookstate/core'
 
 export const isInLogseq = location.href.includes('v=lsp')
 
@@ -16,4 +17,23 @@ export function closeMainDialog() {
 
 export function delay(ms: number = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function removeHtmlTags(str: string): string {
+  if (!str) return str
+  return str.replace(/<[^>]*>/g, '')
+}
+
+export function truncateString(str: string, maxLength: number = 64): string {
+  if (str.length <= maxLength) return str
+  return str.slice(0, maxLength) + '...'
+}
+
+export function getItemTitle(
+  item: Immutable<ZoteroItemEntity>
+) {
+  let title = item.title || item.caseName || item.note || 'Untitled'
+  title = removeHtmlTags(title)
+  title = truncateString(title, 100)
+  return title
 }

@@ -6,6 +6,16 @@
   }
 
   #root {
-    @apply p-5 w-[90vw] h-[80vh] sm:max-w-[1280px] bg-white rounded-xl overflow-y-auto dark:bg-black;
+    @apply p-4 w-[90vw] sm:max-w-[1280px] bg-white rounded-xl overflow-y-auto dark:bg-black;
+  }
+
+  .badge {
+    background: transparent !important;
+    white-space: nowrap !important;
+  }
+
+  .table-container {
+    max-height: 66vh;
+    overflow-y: auto;
   }
 }
