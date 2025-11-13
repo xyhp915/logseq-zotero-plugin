@@ -36,7 +36,8 @@ export const appState = hookstate({
   isVisible: true,
   isPushing: false, // sync to logseq
   pushingLogs: [''],
-  pushingError: ''
+  pushingError: '',
+  pushingProgressMsg: ''
 })
 export const zTopItemsState = hookstate<Array<ZoteroItemEntity>>([])
 export const zCollectionsState = hookstate<Array<ZoteroCollectionEntity>>([])
@@ -92,9 +93,10 @@ function createZRequestHookState<T = any>(opts: {
 }
 
 function createLoggerActions(state: State<Array<string>>) {
-  const actions = ['log', 'error', 'clear']
-  return actions.reduce((acc, action: string) => {
-    acc[action] = (msg: any) => {
+  const actions = ['log', 'error', 'clear'] as const
+  return actions.reduce((acc, action) => {
+    acc[action] = (...args: any) => {
+      const msg = args.length === 1 ? args[0] : args.join(' ')
       if (action === 'clear') {
         state.set([])
       } else {
@@ -106,7 +108,7 @@ function createLoggerActions(state: State<Array<string>>) {
       }
     }
     return acc
-  }, {} as any)
+  }, {} as { log: (msg: any) => void, error: (msg: any) => void, clear: () => void })
 }
 
 export const pushingLogger = createLoggerActions(appState.pushingLogs)

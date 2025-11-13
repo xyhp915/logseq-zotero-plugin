@@ -16,98 +16,98 @@ import {
   LucideRefreshCcwDot,
   LucideSettings,
   LucideSettings2,
-  LucideUpload
+  LucideUpload,
 } from 'lucide-react'
 import { openItemInLogseq, pushItemToLogseq, pushItemTypesToLogseqTag, startFullPushToLogseq } from './handlers.ts'
 import { closeMainDialog, delay, id2UUID } from './common.ts'
 
-function GroupedItemsTabsContainer() {
+function GroupedItemsTabsContainer () {
   const { groupedItems, groupedCollections } = useTopItemsGroupedByCollection()
   const [currentCollectionKey, setCurrentCollectionKey] = useState<string | null>(null)
 
   return (
-    <div>
-      <ul className={'flex gap-2 flex-row'}>
-        {Object.keys(groupedItems).map(collKey => {
-          const collection = groupedCollections[collKey]
-          return (
-            <li key={collKey} className={'flex-1'}>
-              <button className={cn('btn w-full',
-                currentCollectionKey === collKey && 'btn-active')}
-                      onClick={() => setCurrentCollectionKey(collKey)}
-              >
-                <strong>
-                  {collection?.name || collKey}
-                  ({groupedItems[collKey].length})
-                </strong>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-      <div className={'p-2 py-6'}>
-        {currentCollectionKey && groupedItems[currentCollectionKey] && (
-          <div>
-            <EntityItemsTableContainer items={groupedItems[currentCollectionKey]}/>
-          </div>
-        )}
+      <div>
+        <ul className={'flex gap-2 flex-row'}>
+          {Object.keys(groupedItems).map(collKey => {
+            const collection = groupedCollections[collKey]
+            return (
+                <li key={collKey} className={'flex-1'}>
+                  <button className={cn('btn w-full',
+                      currentCollectionKey === collKey && 'btn-active')}
+                          onClick={() => setCurrentCollectionKey(collKey)}
+                  >
+                    <strong>
+                      {collection?.name || collKey}
+                      ({groupedItems[collKey].length})
+                    </strong>
+                  </button>
+                </li>
+            )
+          })}
+        </ul>
+        <div className={'p-2 py-6'}>
+          {currentCollectionKey && groupedItems[currentCollectionKey] && (
+              <div>
+                <EntityItemsTableContainer items={groupedItems[currentCollectionKey]}/>
+              </div>
+          )}
+        </div>
       </div>
-    </div>
   )
 }
 
-function CollectionsLabels(props: { itemCollectionKeys: string[] }) {
+function CollectionsLabels (props: { itemCollectionKeys: string[] }) {
   const { itemCollectionKeys } = props
   const collectionsState = useCollections()
   const itemCollections = collectionsState.items?.filter(coll => itemCollectionKeys.includes(coll.key))
 
   return (
-    <div className={'flex gap-2 flex-wrap'}>
-      {itemCollections?.map(coll => {
-        return (
-          <code key={coll.key} className={'badge badge-soft badge-xs'}>
-            {coll.name}
-          </code>
-        )
-      })}
-    </div>
+      <div className={'flex gap-2 flex-wrap'}>
+        {itemCollections?.map(coll => {
+          return (
+              <code key={coll.key} className={'badge badge-soft badge-xs'}>
+                {coll.name}
+              </code>
+          )
+        })}
+      </div>
   )
 }
 
-function PushItemButton({ item }: { item: Immutable<ZoteroItemEntity> }) {
+function PushItemButton ({ item }: { item: Immutable<ZoteroItemEntity> }) {
   const pushingState = useHookstate(false)
 
   return (
-    <button className={'btn btn-xs btn-ghost px-1'}
-            disabled={pushingState.get()}
-            onClick={async () => {
-              try {
-                pushingState.set(true)
-                await pushItemToLogseq(item)
-                await logseq.UI.showMsg(
-                  `Item "${item.title}" pushed to Logseq page.`, 'success'
-                )
-                await delay()
-              } catch (e) {
-                await logseq.UI.showMsg(
-                  `Error pushing item "${item.title}" to Logseq: ${e}`, 'error'
-                )
-                console.error(e)
-              } finally {
-                pushingState.set(false)
-              }
-            }}
-    >
-      <LucideUpload size={14}/>
-    </button>
+      <button className={'btn btn-xs btn-ghost px-1'}
+              disabled={pushingState.get()}
+              onClick={async () => {
+                try {
+                  pushingState.set(true)
+                  await pushItemToLogseq(item)
+                  await logseq.UI.showMsg(
+                      `Item "${item.title}" pushed to Logseq page.`, 'success',
+                  )
+                  await delay()
+                } catch (e) {
+                  await logseq.UI.showMsg(
+                      `Error pushing item "${item.title}" to Logseq: ${e}`, 'error',
+                  )
+                  console.error(e)
+                } finally {
+                  pushingState.set(false)
+                }
+              }}
+      >
+        <LucideUpload size={14}/>
+      </button>
   )
 }
 
-function EntityItemsTableContainer(
-  props: {
-    items: ImmutableArray<ZoteroItemEntity>,
-    onCheckedItemsChange?: (checkedItemsState: State<any>, someKeysChecked: boolean) => void
-  },
+function EntityItemsTableContainer (
+    props: {
+      items: ImmutableArray<ZoteroItemEntity>,
+      onCheckedItemsChange?: (checkedItemsState: State<any>, checkedItemsCount: number) => void
+    },
 ) {
   const checkedItemsState = useHookstate<{ [key: string]: boolean }>({})
   const checkedInputRef = useRef<HTMLInputElement>(null)
@@ -123,102 +123,105 @@ function EntityItemsTableContainer(
     }
 
     if (props.onCheckedItemsChange) {
-      props.onCheckedItemsChange(checkedItemsState, someKeysChecked)
+      const checkedItemsCount = Object.values(checkedItemsState.get() || {}).filter(v => v).length
+      props.onCheckedItemsChange(checkedItemsState, checkedItemsCount)
     }
   }, [checkedChangedState.get()])
 
   return (
-    <table className="table table-xs border collapse">
-      <thead className={'bg-base-200'}>
-      <tr>
-        <th className={'w-[16px] pr-0'}>
-          <label>
-            <input className={'checkbox checkbox-sm'}
-                   type="checkbox"
-                   ref={checkedInputRef}
-                   defaultChecked={false}
-                   onChange={e => {
-                     const checked = e.target.checked
-                     const newCheckedState: { [key: string]: boolean } = {}
-                     props.items?.forEach(it => {
-                       newCheckedState[it.key] = checked
-                     })
-                     checkedItemsState.set(newCheckedState)
-                     checkedChangedState.set(p => p + 1)
-                   }}
-            />
-          </label>
-        </th>
-        <th>Title</th>
-        <th>Type</th>
-        <th>Collections</th>
-        <th>Attachments</th>
-        <th>dateModified</th>
-        <th>More</th>
-      </tr>
-      </thead>
-      <tbody>
-      {props.items?.map(it => {
-        return (
-          <tr key={it.key} className={'even:bg-base-200'}>
-            <td>
-              <label className={'flex items-center'}>
-                <input className={'checkbox checkbox-sm'} type="checkbox"
-                       checked={checkedItemsState[it.key].get() || false}
-                       onChange={e => {
-                         checkedItemsState[it.key].set(e.target.checked)
-                         checkedChangedState.set(p => p + 1)
-                       }}
-                />
-              </label>
-            </td>
-            <td>
-              <a href={'#'}
-                onClick={(e) => {
-                console.log(JSON.stringify(it, null, 2))
-                  // selected row
-                  const target = e.currentTarget
-                  const rowInput = target.closest('tr')?.querySelector('input[type="checkbox"]') as HTMLInputElement
-                  rowInput?.click()
-              }}>
-                <strong>
-                  {it.title}
-                </strong>
-              </a>
-            </td>
-            <td>[[{it.itemType}]]</td>
-            <td>
-              <CollectionsLabels itemCollectionKeys={it.collections}/>
-            </td>
-            <td>{JSON.stringify(it.attachments)}</td>
-            <td>{it.dateModified}</td>
-            {/*<td>{it.tags?.[0]?.tag}</td>*/}
-            <td className={'flex'}>
-              <PushItemButton item={it}/>
-              <button className={'btn btn-xs btn-ghost px-1'}
-                      title={'Open page in Logseq'}
-                      onClick={async () => {
-                        try {
-                          await openItemInLogseq(it)
-                          closeMainDialog()
-                        } catch (e) {
-                          console.error('Error opening item in Logseq:', e)
-                        }
-                      }}
-              >
-                <LucideExternalLink size={14}/>
-              </button>
-            </td>
-          </tr>
-        )
-      })}
-      </tbody>
-    </table>
+      <table className="table table-xs border collapse">
+        <thead className={'bg-base-200'}>
+        <tr>
+          <th className={'w-[16px] pr-0'}>
+            <label>
+              <input className={'checkbox checkbox-sm'}
+                     type="checkbox"
+                     ref={checkedInputRef}
+                     defaultChecked={false}
+                     onChange={e => {
+                       const checked = e.target.checked
+                       const newCheckedState: { [key: string]: boolean } = {}
+                       props.items?.forEach(it => {
+                         newCheckedState[it.key] = checked
+                       })
+                       checkedItemsState.set(newCheckedState)
+                       checkedChangedState.set(p => p + 1)
+                     }}
+              />
+            </label>
+          </th>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Collections</th>
+          <th>Attachments</th>
+          <th>dateModified</th>
+          <th>More</th>
+        </tr>
+        </thead>
+        <tbody>
+        {props.items?.map(it => {
+          return (
+              <tr key={it.key} className={'even:bg-base-200'}>
+                <td>
+                  <label className={'flex items-center'}>
+                    <input className={'checkbox checkbox-sm'} type="checkbox"
+                           checked={checkedItemsState[it.key].get() || false}
+                           onChange={e => {
+                             checkedItemsState[it.key].set(e.target.checked)
+                             checkedChangedState.set(p => p + 1)
+                           }}
+                    />
+                  </label>
+                </td>
+                <td>
+                  <a href={'#'}
+                     className={'block'}
+                     onClick={(e) => {
+                       console.log(JSON.stringify(it, null, 2))
+                       // selected row
+                       const target = e.currentTarget
+                       const rowInput = target.closest('tr')?.
+                           querySelector('input[type="checkbox"]') as HTMLInputElement
+                       rowInput?.click()
+                     }}>
+                    <strong>
+                      {it.title}
+                    </strong>
+                  </a>
+                </td>
+                <td>[[{it.itemType}]]</td>
+                <td>
+                  <CollectionsLabels itemCollectionKeys={it.collections}/>
+                </td>
+                <td>{JSON.stringify(it.attachments)}</td>
+                <td>{it.dateModified}</td>
+                {/*<td>{it.tags?.[0]?.tag}</td>*/}
+                <td className={'flex'}>
+                  <PushItemButton item={it}/>
+                  <button className={'btn btn-xs btn-ghost px-1'}
+                          title={'Open page in Logseq'}
+                          onClick={async () => {
+                            try {
+                              await openItemInLogseq(it)
+                              closeMainDialog()
+                            } catch (e) {
+                              console.error('Error opening item in Logseq:', e)
+                            }
+                          }}
+                  >
+                    <LucideExternalLink size={14}/>
+                  </button>
+                </td>
+              </tr>
+          )
+        })}
+        </tbody>
+      </table>
   )
 }
 
-function AppContainer(
-  props: PropsWithChildren<any>,
+function AppContainer (
+    props: PropsWithChildren<any>,
 ) {
   // setup shortcuts, global styles, etc.
   useEffect(() => {
@@ -237,12 +240,12 @@ function AppContainer(
   }, [])
 
   return (<div className="app-container">
-      {props.children}
-    </div>
+        {props.children}
+      </div>
   )
 }
 
-function App() {
+function App () {
   // initialize effects
   useCacheZEntitiesEffects()
 
@@ -251,12 +254,29 @@ function App() {
   const collectionsState = useCollections()
   // const zTagsState = useZTags()
   // const [groupedCollectionsView, setGroupedCollectionsView] = useState(false)
-  const someItemsCheckedState = useHookstate(false)
-  const itemsCheckedStateRef = useRef<State<any, any>>(null)
+  const checkedItemsCountState = useHookstate(0)
+  const checkedItemsStateRef = useRef<State<any, any>>(null)
 
   useEffect(() => {
-    console.log('>> collections:', collectionsState.items)
-  }, [collectionsState.items])
+    const isPushing = appState.isPushing.get()
+    const pushingProgressMsg = appState.pushingProgressMsg.get()
+
+    if (isPushing) {
+      logseq.UI.showMsg(pushingProgressMsg, 'success',
+          { key: 'z-pushing-progress-msg', timeout: 0 },
+      )
+    } else {
+      logseq.UI.closeMsg('z-pushing-progress-msg')
+    }
+
+    if (!!appState.pushingError.get()) {
+      logseq.UI.showMsg(`${appState.pushingError.get()}`, 'error')
+      appState.pushingError.set('')
+    }
+  }, [
+    appState.isPushing.get(),
+    appState.pushingError,
+    appState.pushingProgressMsg.get()])
 
   if (!appState.isVisible.get()) {
     return <></>
@@ -265,164 +285,77 @@ function App() {
   const isSyncingRemote = collectionsState.loading || zTopItemsState.loading
 
   return (
-    <AppContainer>
-      <div className={'flex justify-between'}>
-        <div className={'flex gap-3'}>
-          <button className={'btn btn-sm'}>
-            <LucideSettings2 size={18}/> Settings
-          </button>
-          <button className={'btn btn-sm'}
-                  onClick={async () => {
-                    await collectionsState.refresh({})
-                    await zTopItemsState.refresh({})
-                  }}
-                  disabled={isSyncingRemote}
-          >
-            {isSyncingRemote ? (
-              <LucideLoader2 size={18} className={'animate-spin'}/>
-            ) : (
-              <LucideDownload size={18}/>
-            )}
-            Pull remote Zotero items
-          </button>
-          <span className={'label text-sm'}>
+      <AppContainer>
+        <div className={'flex justify-between'}>
+          <div className={'flex gap-3'}>
+            <button className={'btn btn-sm'}>
+              <LucideSettings2 size={18}/> Settings
+            </button>
+            <button className={'btn btn-sm'}
+                    onClick={async () => {
+                      await collectionsState.refresh({})
+                      await zTopItemsState.refresh({})
+                    }}
+                    disabled={isSyncingRemote}
+            >
+              {isSyncingRemote ? (
+                  <LucideLoader2 size={18} className={'animate-spin'}/>
+              ) : (
+                  <LucideDownload size={18}/>
+              )}
+              Pull remote Zotero items
+            </button>
+            <span className={'label text-sm'}>
             {isSyncingRemote ? 'Syncing...' : ` ${zTopItemsState.items.length} items loaded.`}
           </span>
-        </div>
+          </div>
 
-        <div className={'flex gap-3'}>
-          {zTopItemsState.items.length > 0 && (
-            <button
-              className={cn('btn btn-sm btn-outline', someItemsCheckedState.get() ? 'btn-dash btn-accent' : 'btn-success')}
-              onClick={async () => {
-                if (someItemsCheckedState.get()) {
-                  // push selected items
-                  const checkedItems = zTopItemsState.items.filter(it => {
-                    return itemsCheckedStateRef.current?.get()?.[it.key]
-                  })
+          <div className={'flex gap-3'}>
+            {zTopItemsState.items.length > 0 && (
+                <button
+                    className={cn('btn btn-sm btn-outline',
+                        checkedItemsCountState.get() ? 'btn-dash btn-warning' : 'btn-success')}
+                    onClick={async () => {
+                      if (checkedItemsCountState.get()) {
+                        // push selected items
+                        const checkedItems = zTopItemsState.items.filter(it => {
+                          return checkedItemsStateRef.current?.get()?.[it.key]
+                        })
 
-                  if (checkedItems.length === 0) {
-                    await logseq.UI.showMsg(
-                      `No items selected to push to Logseq.`, 'warning'
-                    )
-                    return
-                  }
-
-                  appState.isPushing.set(true)
-                  for (const item of checkedItems) {
-                    try {
-                      await pushItemToLogseq(item)
-                      await logseq.UI.showMsg(
-                        `Item "${item.title}" pushed to Logseq page.`, 'success'
-                      )
-                      await delay(100)
-                    } catch (e) {
-                      await logseq.UI.showMsg(
-                        `Error pushing item "${item.title}" to Logseq: ${e}`, 'error'
-                      )
-                      console.error(e)
-                    }
-                  }
-                  appState.isPushing.set(false)
-                } else {
-                  // push all items
-                  await startFullPushToLogseq()
-                }
-              }}
-              disabled={appState.isPushing.get()}
+                        await startFullPushToLogseq({ items: checkedItems })
+                      } else {
+                        // push all items
+                        await startFullPushToLogseq()
+                      }
+                    }}
+                    disabled={appState.isPushing.get()}
+                >
+                  {appState.isPushing.get() ? (
+                      <LucideLoader2 size={18} className={'animate-spin'}/>) : (
+                      <LucideUpload size={18}/>)}
+                  {checkedItemsCountState.get()
+                      ? `Push selected items (${checkedItemsCountState.get()}) to Logseq`
+                      : 'Push all items to Logseq'}
+                </button>
+            )}
+            <button className={'btn btn-circle btn-sm btn-outline'}
+                    onClick={() => closeMainDialog()}
             >
-              {appState.isPushing.get() ? (
-                <LucideLoader2 size={18} className={'animate-spin'}/>) : (
-                <LucideUpload size={18}/>)}
-              {someItemsCheckedState.get() ? 'Push selected items to Logseq' : 'Push all items to Logseq'}
+              X
             </button>
-          )}
-          <button className={'btn btn-circle btn-sm btn-outline'}
-                  onClick={() => closeMainDialog()}
-          >
-            X
-          </button>
+          </div>
         </div>
-      </div>
 
-      <div>
-        {/*<div className={'flex gap-8 items-center'}>*/}
-        {/*  <h3 className={'py-4 text-6xl'}>*/}
-        {/*    zotero Tags:*/}
-        {/*  </h3>*/}
-        {/*  <button className={'btn'}*/}
-        {/*          disabled={zTagsState.loading}*/}
-        {/*          onClick={async () => {*/}
-        {/*            await zTagsState.refresh({})*/}
-        {/*          }}>*/}
-        {/*    {zTagsState.loading ? 'Loading...' : 'load zotero tags'}*/}
-        {/*  </button>*/}
-        {/*</div>*/}
-        {/*<div className={'p-2 flex gap-3 flex-wrap'}>*/}
-        {/*  {zTagsState.items?.map(it => {*/}
-        {/*    return (*/}
-        {/*        <code className={'badge badge-neutral badge-soft'}>*/}
-        {/*          {it.tag}*/}
-        {/*        </code>)*/}
-        {/*  })}*/}
-        {/*</div>*/}
-      </div>
-
-      {/*<div>*/}
-      {/*  <div className={'flex gap-4 items-center'}>*/}
-      {/*    <h3 className={'py-4 text-6xl'}>zotero collections:</h3>*/}
-      {/*    <button className={'btn mt-4'}*/}
-      {/*            disabled={collectionsState.loading}*/}
-      {/*            onClick={async () => {*/}
-      {/*              await collectionsState.refresh({})*/}
-      {/*            }}>*/}
-      {/*      {collectionsState.loading ? 'Loading...' : 'load zotero collections'}*/}
-      {/*    </button>*/}
-      {/*    <label className="label pt-5">*/}
-      {/*      <input type="checkbox"*/}
-      {/*             onChange={e => setGroupedCollectionsView(e.target.checked)}*/}
-      {/*             defaultChecked={false}*/}
-      {/*             className="toggle toggle-warning"/>*/}
-      {/*      Toggle grouped view*/}
-      {/*    </label>*/}
-      {/*  </div>*/}
-      {/*  <Activity mode={groupedCollectionsView ? 'hidden' : 'visible'}>*/}
-      {/*    <ul className={'p-2'}>*/}
-      {/*      {collectionsState.items?.map(it => {*/}
-      {/*        return (<li className={'flex gap-3'}>*/}
-      {/*          <code>{JSON.stringify(it)}</code>*/}
-      {/*        </li>)*/}
-      {/*      })}*/}
-      {/*    </ul>*/}
-      {/*  </Activity>*/}
-      {/*  <Activity mode={groupedCollectionsView ? 'visible' : 'hidden'}>*/}
-      {/*    <GroupedItemsTabsContainer/>*/}
-      {/*  </Activity>*/}
-      {/*</div>*/}
-
-      <div>
-        <div className={'flex gap-8 items-center'}>
-          {/*<button className={cn('btn btn-link mt-3', zTopItemsState.loading && 'loading')}*/}
-          {/*        onClick={async () => {*/}
-          {/*            await zTopItemsState.load({*/}
-          {/*                itemType: 'book',*/}
-          {/*            })*/}
-          {/*        }}*/}
-          {/*>*/}
-          {/*    load more*/}
-          {/*</button>*/}
-        </div>
         <div className={'py-4'}>
           <EntityItemsTableContainer
-            items={zTopItemsState.items}
-            onCheckedItemsChange={(checkedItemsState1, someKeysChecked) => {
-              someItemsCheckedState.set(someKeysChecked)
-              itemsCheckedStateRef.current = checkedItemsState1
-            }}
+              items={zTopItemsState.items}
+              onCheckedItemsChange={(checkedItemsState1, checkedItemsCount) => {
+                checkedItemsCountState.set(checkedItemsCount)
+                checkedItemsStateRef.current = checkedItemsState1
+              }}
           />
         </div>
-      </div>
-    </AppContainer>
+      </AppContainer>
   )
 }
 
