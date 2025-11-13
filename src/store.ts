@@ -211,3 +211,46 @@ export function useCacheZEntitiesEffects() {
     persistData('topItems', zTopItemsState1.items)
   }, [zTopItemsState1.items?.[0]?.key])
 }
+
+export function usePaginatedTopItems({
+  limit
+}: { limit: number }) {
+  const zTopItemsState1 = useTopItems()
+  const currentPageState = useHookstate(0)
+  limit = limit ?? 10
+  const totalItems = zTopItemsState1.items.length
+  const totalPages = Math.ceil(totalItems / limit)
+  const paginatedItems = zTopItemsState1.items.slice(
+    currentPageState.get() * limit,
+    (currentPageState.get() + 1) * limit
+  )
+
+  const goToPage = (page: number) => {
+    if (page < 0 || page >= totalPages) return
+    currentPageState.set(page)
+  }
+
+  const reset = () => {
+    currentPageState.set(0)
+  }
+
+  const paginatedLabelNums: Array<number | string> = []
+  for (let i = 0; i < totalPages; i++) {
+    paginatedLabelNums.push(i + 1)
+  }
+
+  if (paginatedLabelNums.length > limit) {
+    const maxHalf = Math.floor(paginatedLabelNums.length / 2)
+    const start = Math.min(6, maxHalf)
+    const spliceCount = Math.max(maxHalf - 5, 1)
+    paginatedLabelNums.splice(start, spliceCount, '...')
+  }
+
+  return {
+    paginatedItems,
+    currentPage: currentPageState.get(),
+    totalPages,
+    goToPage, reset,
+    paginatedLabelNums
+  }
+}

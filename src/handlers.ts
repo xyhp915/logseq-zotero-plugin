@@ -18,7 +18,7 @@ export async function pushItemTypesToLogseqTag() {
   }
 
   const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis',
-    'report', 'document', 'magazineArticle', 'newspaperArticle', 'videoRecording', 'bookSection'
+    'report', 'document', 'magazineArticle', 'newspaperArticle', 'videoRecording', 'bookSection', 'note', 'case'
   ]
 
   // 2. create tags for each item type and their fields
@@ -82,11 +82,12 @@ export async function pushItemToLogseq(
   }
 
   await logseq.Editor.addBlockTag(page!.uuid, itemTag.uuid)
-  console.log('Adding tag to page:')
 
   // upsert block properties value
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', item.key || '')
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'title', item.title || '')
+  await logseq.Editor.upsertBlockProperty(page!.uuid, 'date', item.date || '')
+  await logseq.Editor.upsertBlockProperty(page!.uuid, 'place', item.place || '')
   // upsert related blocks (notes, attachments, relations, etc.)
   const notesBlockUUID = id2UUID('note_' + item.key)
   let notesBlock = await logseq.Editor.getBlock(notesBlockUUID)
