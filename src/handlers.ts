@@ -1,9 +1,10 @@
 import { appState, pushingLogger, type ZoteroItemEntity, zTopItemsState } from './store.ts'
-import type { Immutable } from '@hookstate/core'
+import type { Immutable, ImmutableArray } from '@hookstate/core'
 import { delay, id2UUID } from './common.ts'
 
 export async function pushItemTypesToLogseqTag() {
   const { default: { itemTypes } } = await import('./assets/z_item_types.json')
+
   // 1. create root tag "Zotero"
   const zRootTagName = 'Zotero'
   const zRootTagUUID = id2UUID('lsp_' + zRootTagName)
@@ -24,19 +25,16 @@ export async function pushItemTypesToLogseqTag() {
   for (const itemType of itemTypes) {
     let tagName = itemType.itemType
     if (!tagName || !pickedItemTypes.includes(tagName)) continue
-    // @ts-ignore
     let tag = await logseq.Editor.getTag(tagName)
     pushingLogger.log(`Processing item type tag: ${tagName} - Found: ${!!tag}`)
 
     if (tag) {
-      return
+      continue
     }
 
-    if (!tag) {
-      tag = await logseq.Editor.createTag(tagName)
-      await logseq.Editor.upsertBlockProperty(tag!.uuid, ':logseq.property.class/extends', [zRootTag?.id])
-      pushingLogger.log(`Created tag for item type: ${tagName} - UUID: ${tag.uuid}`)
-    }
+    tag = await logseq.Editor.createTag(tagName)
+    await logseq.Editor.upsertBlockProperty(tag!.uuid, ':logseq.property.class/extends', [zRootTag?.id])
+    pushingLogger.log(`Created tag for item type: ${tagName} - UUID: ${tag!.uuid}`)
 
     for (const field of itemType.fields) {
       const fieldName = field.field
@@ -102,7 +100,7 @@ export async function pushItemToLogseq(
     await logseq.Editor.updateBlock(notesBlock.uuid, note)
   }
 
-  console.log('Created notes block for item:', notesBlock)
+  // console.log('Created notes block for item:', notesBlock)
   // await logseq.Editor.upsertBlockProperty(page!.uuid, 'note', item.note || '')
 
   return pageUUID
@@ -123,13 +121,13 @@ export async function openItemInLogseq(
 }
 
 export async function startFullPushToLogseq(
-  opts?: { items: Immutable<ZoteroItemEntity>[] }) {
+  opts?: { items: ImmutableArray<ZoteroItemEntity> }) {
   if (appState.isPushing.get()) return
 
   try {
     appState.isPushing.set(true)
 
-    if (opts?.items) {
+    if (opts?.items && opts.items.length > 0) {
       appState.pushingProgressMsg.set(`Pushing item types to Logseq tags...`)
       await pushItemTypesToLogseqTag()
     }
@@ -137,6 +135,7 @@ export async function startFullPushToLogseq(
     appState.pushingProgressMsg.set(`Pushing items to Logseq pages...`)
     const items = opts?.items || zTopItemsState.get()
     let count = 0
+    let successCount = 0
 
     for (const item of items) {
       count++
@@ -144,6 +143,7 @@ export async function startFullPushToLogseq(
       pushingLogger.log(`Pushing item ${count}/${items.length}: ${item.title || 'Untitled'}`)
       try {
         await pushItemToLogseq(item)
+        successCount++
       } catch (e) {
         const errMsg = `Error pushing item ${item.title || 'Untitled'} to Logseq: ${e}`
         appState.pushingError.set(errMsg)
@@ -153,7 +153,7 @@ export async function startFullPushToLogseq(
       await delay(500) // slight delay to avoid blocking
     }
 
-    appState.pushingProgressMsg.set(`Push to Logseq completed. Pushed ${items.length} items.`)
+    appState.pushingProgressMsg.set(`Push to Logseq completed. Pushed ${successCount} items.`)
     pushingLogger.log('Full push to Logseq completed.')
     await delay(3000)
   } catch (e) {

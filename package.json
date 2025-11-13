@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@hookstate/core": "^4.0.2",
-    "@logseq/libs": "^0.2.7",
+    "@logseq/libs": "^0.2.8",
     "classnames": "^2.5.1",
     "lucide-react": "^0.548.0",
     "react": "^19.1.1",
