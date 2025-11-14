@@ -14,10 +14,10 @@ import cn from 'classnames'
 import { type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import {
   LucideDownload,
-  LucideExternalLink,
+  LucideExternalLink, LucideFilter,
   LucideList,
   LucideLoader2,
-  LucideMinus,
+  LucideMinus, LucideSearch,
   LucideSettings2,
   LucideUpload,
   LucideX,
@@ -52,7 +52,7 @@ function GroupedItemsTabsContainer () {
         <div className={'p-2 py-6'}>
           {currentCollectionKey && groupedItems[currentCollectionKey] && (
               <div>
-                <EntityItemsTableContainer items={groupedItems[currentCollectionKey]}/>
+                <TopEntityItemsTableContainer items={groupedItems[currentCollectionKey]}/>
               </div>
           )}
         </div>
@@ -107,7 +107,7 @@ function PushItemButton ({ item }: { item: Immutable<ZoteroItemEntity> }) {
   )
 }
 
-function EntityItemsTableContainer (
+function TopEntityItemsTableContainer (
     props: {
       items: ImmutableArray<ZoteroItemEntity>,
       onCheckedItemsChange?: (checkedItemsState: State<any>, checkedItemsCount: number) => void
@@ -219,6 +219,38 @@ function EntityItemsTableContainer (
         })}
         </tbody>
       </table>
+  )
+}
+
+function TopEntityItemsFilteredContainer (
+    { filteredQueryState }: { filteredQueryState: State<{ q: string, filterItemTypes: Array<string> }, {}> },
+) {
+
+  return (
+      <div className={'flex justify-between pb-3 px-1'}>
+        <div>
+          <button className={'btn btn-sm'}>
+            <LucideFilter size={14}/>
+            Filter item types
+          </button>
+        </div>
+        <div>
+          <form className={'flex items-center gap-2'}
+                onSubmit={(e) => {
+                  const formData = new FormData(e.currentTarget)
+                  const q = formData.get('q') as string
+                  filteredQueryState.q.set(q)
+                  e.preventDefault()
+                }}
+          >
+            <strong>{JSON.stringify(filteredQueryState.value)}</strong>
+            <input type="text" name={'q'} className={'input input-sm'}/>
+            <button type={'submit'} className={'btn btn-sm'}>
+              <LucideSearch size={16}/>
+            </button>
+          </form>
+        </div>
+      </div>
   )
 }
 
@@ -471,8 +503,10 @@ function App () {
           {(isInvalidUserSettings || currentTabState.get() === 'settings') ? (
               <SettingsTabContainer/>) : (
               <>
+                <TopEntityItemsFilteredContainer
+                    filteredQueryState={filteredTopItemsState.filteredQueryState}/>
                 <div className={'table-container'}>
-                  <EntityItemsTableContainer
+                  <TopEntityItemsTableContainer
                       items={paginatedTopItems.paginatedItems}
                       onCheckedItemsChange={(checkedItemsState1, checkedItemsCount) => {
                         checkedItemsCountState.set(checkedItemsCount)

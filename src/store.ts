@@ -235,10 +235,13 @@ export function useCacheZEntitiesEffects() {
 
 export function useFilteredTopItems() {
   const zTopItemsState1 = useTopItems()
-  const filterTextState = useHookstate('')
+  const filteredQueryState = useHookstate({
+    q: '',
+    filterItemTypes: [] as Array<string>
+  })
 
   const filteredItems = zTopItemsState1.items.filter(item => {
-    const filterText = filterTextState.get().toLowerCase()
+    const filterText = filteredQueryState.get().q.toLowerCase()
     if (!filterText) return true
     const title = item.title?.toLowerCase() || ''
     const itemType = item.itemType?.toLowerCase() || ''
@@ -249,8 +252,7 @@ export function useFilteredTopItems() {
   })
 
   return {
-    filterText: filterTextState.get(),
-    setFilterText: (text: string) => filterTextState.set(text),
+    filteredQueryState,
     filteredItems
   }
 }
@@ -259,7 +261,6 @@ export function usePaginatedTopItems({
   filteredItems,
   limit
 }: { limit: number, filteredItems: ImmutableArray<ZoteroItemEntity> }) {
-  const filteredItemsState = useFilteredTopItems()
   const currentPageState = useHookstate(0)
   limit = limit ?? 10
   const totalItems = filteredItems.length
