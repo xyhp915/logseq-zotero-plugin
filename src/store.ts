@@ -3,12 +3,6 @@ import * as z from 'zotero-api-client'
 import { hookstate, type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import { useCallback, useEffect } from 'react'
 
-function createLocalZoteroAPI() {
-  return z.default(import.meta.env.VITE_API_KEY).library('user', import.meta.env.VITE_Z_USER_ID) as any
-}
-
-export const zLocalApi = createLocalZoteroAPI()
-
 export type ZoteroItemEntity = {
   key: string,
   title: string,
@@ -31,17 +25,44 @@ export type ZoteroTagEntity = {
   tag: string,
   meta: any
 }
+export type UserSettings = {
+  apiKey: string,
+  userId: string,
+  [key: string]: any
+}
 
 export const appState = hookstate({
   isVisible: true,
   isPushing: false, // sync to logseq
   pushingLogs: [''],
   pushingError: '',
-  pushingProgressMsg: ''
+  pushingProgressMsg: '',
+  userSettings: JSON.parse(localStorage.getItem('zotero_user_settings') || '{}') as UserSettings
 })
 export const zTopItemsState = hookstate<Array<ZoteroItemEntity>>([])
 export const zCollectionsState = hookstate<Array<ZoteroCollectionEntity>>([])
 export const zTagsState = hookstate<Array<ZoteroTagEntity>>([])
+
+function createLocalZoteroAPI() {
+  const userSettings = appState.userSettings.get() as any
+  const apiKey = userSettings.apiKey
+  const userId = userSettings.userId
+  return z.default(apiKey).library('user', userId) as any
+}
+
+export let zLocalApi = createLocalZoteroAPI()
+
+export function validateZoteroCredentials() {
+  return zLocalApi.items().top().get({ limit: 1 })
+}
+
+export function setZoteroUserSettings(settings: any) {
+  const cachedSettings = localStorage.getItem('zotero_user_settings')
+  const mergedSettings = { ...JSON.parse(cachedSettings || '{}'), ...settings }
+  localStorage.setItem('zotero_user_settings', JSON.stringify(mergedSettings))
+  appState.userSettings.set(mergedSettings)
+  zLocalApi = createLocalZoteroAPI()
+}
 
 function createZRequestHookState<T = any>(opts: {
   itemsState: State<T[], {}>,

@@ -30,7 +30,11 @@ if (isInLogseq) {
 
         // on main ui show
         logseq.on('ui:visible:changed', ({ visible }: any) => {
-          appState.isVisible.set(visible)
+          if (visible) {
+            appState.isVisible.set(true)
+          } else {
+            setTimeout(() => {appState.isVisible.set(false)}, 300)
+          }
         })
       },
   ).catch(console.error)
