@@ -236,10 +236,17 @@ function TopEntityItemsTableContainer(
 }
 
 function TopEntityItemsFilteredContainer(
-  { filteredQueryState }: { filteredQueryState: State<{ q: string, filterItemTypes: Array<string> }, {}> },
+  { filteredQueryState }: {
+    filteredQueryState: State<{
+      q: string,
+      filterItemTypes: Array<string>,
+      filterCollections: Array<string>
+    }, {}>
+  },
 ) {
   const qInputRef = useRef<HTMLInputElement>(null)
   const topItems = useTopItems()
+  const collectionsState = useCollections()
   const itemTypes = useMemo(() => {
     const typesSet = new Set<string>()
     topItems.items.forEach(it => {
@@ -271,54 +278,69 @@ function TopEntityItemsFilteredContainer(
   return (
     <div className={'flex justify-between pb-3 px-1'}>
       <div>
-        <div className="dropdown">
-          <div tabIndex={0} role="button" className="btn btn-sm m-1">
-            <LucideFilter size={14}/>
-            <span className={'pl-1'}>
-              {filteredQueryState.value.filterItemTypes.length > 0
-                ? `Filtered: ${filteredQueryState.value.filterItemTypes.join(', ')}`
-                : 'Filter by item types'}
+        {[['item types', filteredQueryState.value.filterItemTypes, itemTypes, filteredQueryState.filterItemTypes],
+          ['collections', filteredQueryState.value.filterCollections, collectionsState.items.map(it => {
+            return it.key
+          }), filteredQueryState.filterCollections, collectionsState.items.reduce((acc, it) => {
+            acc[it.key] = it.name
+            return acc
+          }, {} as { [key: string]: any })]]
+          .map(([label, selectedItems, items, itState, itemsKeyMap]: any) => {
+            return (
+              <div className="dropdown">
+                <div tabIndex={0} role="button" className="btn btn-sm m-1">
+                  <LucideFilter size={14}/>
+                  <span className={'pl-1'}>
+              {selectedItems.length > 0
+                ? `Filtered: ${selectedItems.map((it: string) => {
+                  return itemsKeyMap ? itemsKeyMap[it] : it
+                }).join(', ')}`
+                : `Filter by ${label}`}
             </span>
-          </div>
-          <ul tabIndex={-1} className="dropdown-content menu bg-base-100 rounded-box z-1 p-2 w-52 shadow-sm">
-            {itemTypes.map(type => {
-              const isChecked = filteredQueryState.value.filterItemTypes.includes(type)
-              return (
-                <li key={type}>
-                  <label className="flex items-center gap-2 px-2 py-1">
-                    <input type="checkbox"
-                           checked={isChecked}
-                           onChange={e => {
-                             const checked = e.target.checked
-                             const currentTypes = filteredQueryState.value.filterItemTypes
-                             if (checked) {
-                               // add
-                               filteredQueryState.filterItemTypes.set([...currentTypes, type])
-                             } else {
-                               // remove
-                               filteredQueryState.filterItemTypes.set(
-                                 currentTypes.filter(t => t !== type),
-                               )
-                             }
-                           }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                </li>
-              )
-            })}
-            {/*  clear all */}
-            <li>
-              <button className="btn btn-sm btn-ghost w-full"
-                      onClick={() => {
-                        filteredQueryState.filterItemTypes.set([])
-                      }}
-              >
-                Clear All
-              </button>
-            </li>
-          </ul>
-        </div>
+                </div>
+                <ul tabIndex={-1} className="dropdown-content menu bg-base-100 rounded-box z-1 p-2 w-52 shadow-sm">
+                  {items.map((type: string) => {
+                    const isChecked = selectedItems.includes(type)
+                    const labelText = itemsKeyMap ? itemsKeyMap[type] : type
+                    return (
+                      <li key={type}>
+                        <label className="flex items-center gap-2 px-2 py-1">
+                          <input type="checkbox"
+                                 checked={isChecked}
+                                 onChange={e => {
+                                   const checked = e.target.checked
+                                   const currentTypes = selectedItems
+                                   if (checked) {
+                                     // add
+                                     itState.set([...currentTypes, type])
+                                   } else {
+                                     // remove
+                                     itState.set(
+                                       currentTypes.filter((t: any) => t !== type),
+                                     )
+                                   }
+                                 }}
+                          />
+                          <span>{labelText}</span>
+                        </label>
+                      </li>
+                    )
+                  })}
+                  {/*  clear all */}
+                  <li>
+                    <button className="btn btn-sm btn-ghost w-full"
+                            onClick={() => {
+                              itState.set([])
+                            }}
+                    >
+                      Clear All
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )
+          })}
+
       </div>
       <div>
         <form className={'flex items-center gap-2'}

@@ -237,7 +237,8 @@ export function useFilteredTopItems() {
   const zTopItemsState1 = useTopItems()
   const filteredQueryState = useHookstate({
     q: '',
-    filterItemTypes: [] as Array<string>
+    filterItemTypes: [] as Array<string>,
+    filterCollections: [] as Array<string>
   })
 
   // filter items based on types
@@ -245,6 +246,16 @@ export function useFilteredTopItems() {
     const filterItemTypes = filteredQueryState.get().filterItemTypes
     if (filterItemTypes.length === 0) return true
     return filterItemTypes.includes(item.itemType)
+  })
+
+  // filter items based on collections
+  filteredItems = filteredItems.filter(item => {
+    const filterCollections = filteredQueryState.get().filterCollections
+    if (filterCollections.length === 0) return true
+    if (!item.collections || item.collections.length === 0) {
+      return filterCollections.includes('uncategorized')
+    }
+    return item.collections.some((collKey: string) => filterCollections.includes(collKey))
   })
 
   filteredItems = filteredItems.filter(item => {
