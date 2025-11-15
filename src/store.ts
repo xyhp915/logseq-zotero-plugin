@@ -240,15 +240,22 @@ export function useFilteredTopItems() {
     filterItemTypes: [] as Array<string>
   })
 
-  const filteredItems = zTopItemsState1.items.filter(item => {
-    const filterText = filteredQueryState.get().q.toLowerCase()
-    if (!filterText) return true
+  // filter items based on types
+  let filteredItems = zTopItemsState1.items.filter(item => {
+    const filterItemTypes = filteredQueryState.get().filterItemTypes
+    if (filterItemTypes.length === 0) return true
+    return filterItemTypes.includes(item.itemType)
+  })
+
+  filteredItems = filteredItems.filter(item => {
+    const qText = filteredQueryState.get().q.toLowerCase()
+    if (!qText) return true
     const title = item.title?.toLowerCase() || ''
     const itemType = item.itemType?.toLowerCase() || ''
     const tags = (item.tags || []).map((t: any) => t.tag.toLowerCase()).join(' ')
-    return title.includes(filterText) ||
-      itemType.includes(filterText) ||
-      tags.includes(filterText)
+    return title.includes(qText) ||
+      itemType.includes(qText) ||
+      tags.includes(qText)
   })
 
   return {

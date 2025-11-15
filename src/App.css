@@ -17,5 +17,23 @@
   .table-container {
     max-height: 66vh;
     overflow-y: auto;
+    min-height: 380px;
+
+    .hover-visible {
+      @apply invisible;
+    }
+
+    tr {
+      &:hover {
+        @apply bg-gray-100! dark:bg-gray-800;
+
+        .hover-visible {
+          @apply visible!;
+        }
+      }
+    }
+  }
+
+  .dropdown-content {
   }
 }
