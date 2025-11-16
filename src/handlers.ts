@@ -2,8 +2,24 @@ import { appState, pushingLogger, type ZoteroItemEntity, zTopItemsState } from '
 import type { Immutable, ImmutableArray } from '@hookstate/core'
 import { delay, id2UUID } from './common.ts'
 
-export async function pushItemTypesToLogseqTag() {
+let itemTypesData: Array<any> = []
+let itemTypesMapping: Record<string, Array<{ field: string }>> = {}
+
+async function resolveItemTypesData() {
+  if (itemTypesData.length > 0) {
+    return
+  }
+
   const { default: { itemTypes } } = await import('./assets/z_item_types.json')
+  itemTypesData = itemTypes
+
+  for (const itemType of itemTypesData) {
+    itemTypesMapping[itemType.itemType] = itemType.fields
+  }
+}
+
+export async function pushItemTypesToLogseqTag() {
+  await resolveItemTypesData()
 
   // 1. create root tag "Zotero"
   const zRootTagName = 'Zotero'
@@ -22,7 +38,7 @@ export async function pushItemTypesToLogseqTag() {
   ]
 
   // 2. create tags for each item type and their fields
-  for (const itemType of itemTypes) {
+  for (const itemType of itemTypesData) {
     let tagName = itemType.itemType
     if (!tagName || !pickedItemTypes.includes(tagName)) continue
     let tag = await logseq.Editor.getTag(tagName)
@@ -58,7 +74,8 @@ export async function pushCollectionsToLogseqPage() {
 export async function pushItemToLogseq(
   item: Immutable<ZoteroItemEntity>
 ) {
-  console.log('Pushing item to Logseq:', item)
+  console.log('>> Pushing item to Logseq:', item)
+  await resolveItemTypesData()
   const pageUUID = id2UUID(item.key)
   const pageTitle = item.title || 'Untitled'
   let page = await logseq.Editor.getPage(pageUUID)
@@ -83,26 +100,42 @@ export async function pushItemToLogseq(
 
   await logseq.Editor.addBlockTag(page!.uuid, itemTag.uuid)
 
-  // upsert block properties value
+  const fields = itemTypesMapping[item.itemType] || []
+
+  // upsert common block properties value
+  const reservedFields = ['key', 'title', 'note']
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', item.key || '')
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'title', item.title || '')
-  await logseq.Editor.upsertBlockProperty(page!.uuid, 'date', item.date || '')
-  await logseq.Editor.upsertBlockProperty(page!.uuid, 'place', item.place || '')
+
+  // upsert all item fields as block properties
+  for (const field of fields) {
+    const fieldName = field.field
+    if (reservedFields.includes(fieldName)) continue
+    const fieldValue = (item as any)[fieldName] || ''
+    try {
+      await logseq.Editor.upsertBlockProperty(page!.uuid, fieldName, fieldValue || '')
+    } catch (e) {
+      console.error(`Error upserting block property ${fieldName} for item ${item.title || 'Untitled'}:`, e)
+    }
+  }
+
   // upsert related blocks (notes, attachments, relations, etc.)
   const notesBlockUUID = id2UUID('note_' + item.key)
   let notesBlock = await logseq.Editor.getBlock(notesBlockUUID)
-  const note = item.note || ''
+  const note = item.note?.trim()
 
-  if (!notesBlock) {
-    notesBlock = await logseq.Editor.prependBlockInPage(page!.uuid, note,
-      // @ts-ignore
-      { customUUID: notesBlockUUID, })
-  } else {
-    await logseq.Editor.updateBlock(notesBlock.uuid, note)
+  if (!!note) {
+    if (!notesBlock) {
+      notesBlock = await logseq.Editor.prependBlockInPage(page!.uuid, note,
+        // @ts-ignore
+        { customUUID: notesBlockUUID, })
+    } else {
+      await logseq.Editor.updateBlock(notesBlock.uuid, note)
+    }
+
+    // console.log('Created notes block for item:', notesBlock)
+    // await logseq.Editor.upsertBlockProperty(page!.uuid, 'note', item.note || '')
   }
-
-  // console.log('Created notes block for item:', notesBlock)
-  // await logseq.Editor.upsertBlockProperty(page!.uuid, 'note', item.note || '')
 
   return pageUUID
 }
@@ -128,7 +161,7 @@ export async function startFullPushToLogseq(
   try {
     appState.isPushing.set(true)
 
-    if (opts?.items && opts.items.length > 0) {
+    if (!opts?.items) {
       appState.pushingProgressMsg.set(`Pushing item types to Logseq tags...`)
       await pushItemTypesToLogseqTag()
     }

@@ -14,8 +14,8 @@ import cn from 'classnames'
 import { type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import {
   LucideDownload,
-  LucideExternalLink, LucideFilter,
-  LucideList,
+  LucideExternalLink, LucideFilter, LucideInfo,
+  LucideList, LucideLoader,
   LucideLoader2,
   LucideMinus, LucideSearch,
   LucideSettings2,
@@ -102,7 +102,8 @@ function PushItemButton ({ item }: { item: Immutable<ZoteroItemEntity> }) {
                 }
               }}
       >
-        <LucideUpload size={14}/>
+        {pushingState.get() ? (
+            <LucideLoader size={12} className={'animate-spin'}/>) : <LucideUpload size={14}/>}
       </button>
   )
 }
@@ -418,13 +419,14 @@ function SettingsTabContainer () {
         e.preventDefault()
 
         const formData = new FormData(e.currentTarget)
+        const formDataPlain = Object.fromEntries(formData)
         const apiKey = formData.get('z_api_key') as string
         const userId = formData.get('z_user_id') as string
-        console.log('Saving settings:', { apiKey, userId })
+        console.log('Saving settings:', formDataPlain)
 
         try {
           validatingState.set(true)
-          setZoteroUserSettings({ apiKey, userId })
+          setZoteroUserSettings({ apiKey, userId, ...formDataPlain })
           await validateZoteroCredentials()
           await logseq.UI.showMsg('Zotero user settings saved successfully.', 'success')
         } catch (e: any) {
@@ -475,6 +477,27 @@ function SettingsTabContainer () {
                  className={'px-1 underline text-info'}
               >
                 https://www.youtube.com/watch?v=7vDiZ8o_eHk
+              </a>
+            </small>
+          </p>
+          <p className={'flex flex-col mt-6'}>
+            <label htmlFor={'z_data_dir'}
+                   className={'font-semibold opacity-90'}>
+              Zotero data directory:
+            </label>
+            <input type="text" id={'z_data_dir'}
+                   className="input input-bordered w-full max-w-xs mt-1"
+                   placeholder={'/Users/username/Zotero'}
+                   name={'z_data_dir'}
+                   defaultValue={userSettings?.z_data_dir || ''}
+            />
+            <small className={'opacity-60 pt-2'}>
+              Locating Your Zotero Data.
+              <a href="https://www.zotero.org/support/zotero_data"
+                 target={'_blank'}
+                 className={'px-1 underline text-info'}
+              >
+                https://www.zotero.org/support/zotero_data
               </a>
             </small>
           </p>
