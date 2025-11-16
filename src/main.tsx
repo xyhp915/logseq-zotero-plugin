@@ -28,6 +28,15 @@ if (isInLogseq) {
       </a>`,
         })
 
+        // shortcut key
+        logseq.App.registerCommandPalette({
+          key: 'zotero-show-main-ui',
+          label: 'Show Zotero Extension Main UI',
+          keybinding: { binding: 'z z' },
+        }, () => {
+          logseq.showMainUI()
+        })
+
         // on main ui show
         logseq.on('ui:visible:changed', ({ visible }: any) => {
           if (visible) {

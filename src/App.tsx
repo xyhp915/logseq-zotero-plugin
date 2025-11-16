@@ -3,10 +3,12 @@ import {
   setZoteroUserSettings,
   useAppState,
   useCacheZEntitiesEffects,
-  useCollections, useFilteredTopItems,
+  useCollections,
+  useFilteredTopItems,
   usePaginatedTopItems,
   useTopItems,
-  useTopItemsGroupedByCollection, validateZoteroCredentials,
+  useTopItemsGroupedByCollection,
+  validateZoteroCredentials,
   type ZoteroItemEntity,
 } from './store.ts'
 import { type PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,16 +16,20 @@ import cn from 'classnames'
 import { type Immutable, type ImmutableArray, type State, useHookstate } from '@hookstate/core'
 import {
   LucideDownload,
-  LucideExternalLink, LucideFilter, LucideInfo,
-  LucideList, LucideLoader,
+  LucideExternalLink,
+  LucideFilter,
+  LucideList,
+  LucideLoader,
   LucideLoader2,
-  LucideMinus, LucideSearch,
+  LucideMinus,
+  LucideRotateCcw,
+  LucideSearch,
   LucideSettings2,
   LucideUpload,
   LucideX,
 } from 'lucide-react'
 import { openItemInLogseq, pushItemToLogseq, startFullPushToLogseq } from './handlers.ts'
-import { closeMainDialog, delay, getItemTitle, id2UUID } from './common.ts'
+import { closeMainDialog, delay, getItemTitle } from './common.ts'
 
 function GroupedItemsTabsContainer () {
   const { groupedItems, groupedCollections } = useTopItemsGroupedByCollection()
@@ -355,7 +361,19 @@ function TopEntityItemsFilteredContainer (
                 </div>
             )
           })}
-
+          {/* reset all filter */}
+          {(filteredQueryState.value.filterItemTypes.length > 0 ||
+              filteredQueryState.value.filterCollections.length > 0) && (
+              <button className={'btn btn-sm btn-ghost m-1 opacity-70'}
+                      onClick={() => {
+                        filteredQueryState.filterItemTypes.set([])
+                        filteredQueryState.filterCollections.set([])
+                      }}
+              >
+                <LucideRotateCcw size={14}/>
+                Reset all filters
+              </button>
+          )}
         </div>
         <div>
           <form className={'flex items-center gap-2'}
