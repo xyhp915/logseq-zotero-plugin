@@ -1,4 +1,4 @@
-import { appState, pushingLogger, type ZoteroItemEntity, zTopItemsState } from './store.ts'
+import { appState, pushingLogger, zCollectionsState, type ZoteroItemEntity, zTopItemsState } from './store.ts'
 import type { Immutable, ImmutableArray } from '@hookstate/core'
 import { delay, id2UUID } from './common.ts'
 
@@ -23,18 +23,21 @@ export async function pushItemTypesToLogseqTag() {
 
   // 1. create root tag "Zotero"
   const zRootTagName = 'Zotero'
-  const zRootTagUUID = id2UUID('lsp_' + zRootTagName)
+  const zRootTagUUID = id2UUID('zotero_' + zRootTagName)
   let zRootTag = await logseq.Editor.getPage(zRootTagUUID)
 
   if (!zRootTag) {
     // @ts-ignore
     zRootTag = await logseq.Editor.createTag(zRootTagName, { uuid: zRootTagUUID })
     await logseq.Editor.upsertProperty('key', { type: 'default' })
+    await logseq.Editor.upsertProperty('tags', { type: 'node', cardinality: 'many' })
     await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'key')
+    await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'tags')
   }
 
   const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis',
-    'report', 'document', 'magazineArticle', 'newspaperArticle', 'videoRecording', 'bookSection', 'note', 'case'
+    'report', 'document', 'magazineArticle', 'newspaperArticle', 'videoRecording', 'bookSection', 'note', 'case',
+    'collections'
   ]
 
   // 2. create tags for each item type and their fields
@@ -43,13 +46,17 @@ export async function pushItemTypesToLogseqTag() {
     if (!tagName || !pickedItemTypes.includes(tagName)) continue
     let tag = await logseq.Editor.getTag(tagName)
     pushingLogger.log(`Processing item type tag: ${tagName} - Found: ${!!tag}`)
+    const forceExtendsRootTag = async (tagUUID: string) => {
+      await logseq.Editor.upsertBlockProperty(tagUUID, ':logseq.property.class/extends', [zRootTag?.id])
+    }
 
     if (tag) {
+      await forceExtendsRootTag(tag.uuid)
       continue
     }
 
     tag = await logseq.Editor.createTag(tagName)
-    await logseq.Editor.upsertBlockProperty(tag!.uuid, ':logseq.property.class/extends', [zRootTag?.id])
+    await forceExtendsRootTag(tag?.uuid!)
     pushingLogger.log(`Created tag for item type: ${tagName} - UUID: ${tag!.uuid}`)
 
     for (const field of itemType.fields) {
@@ -68,7 +75,29 @@ export async function pushItemTypesToLogseqTag() {
 }
 
 export async function pushCollectionsToLogseqPage() {
+  const collectionItems = zCollectionsState.get()
 
+  for (const collection of collectionItems) {
+    const pageUUID = id2UUID('zotero_' + collection.key)
+    let page = await logseq.Editor.getPage(pageUUID)
+    if (!page) {
+      page = await logseq.Editor.createPage(
+        `${collection.name}`, {},
+        {
+          customUUID: pageUUID,
+          redirect: false
+        } as any
+      )
+      console.log('>> Created new Collection page in Logseq:', page)
+    }
+
+    // upsert collection properties
+    await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', collection.key || '')
+
+    // add collection tag
+    const collectionsTag = await logseq.Editor.getTag('collections')
+    await logseq.Editor.addBlockTag(page?.uuid!, collectionsTag?.uuid!)
+  }
 }
 
 export async function pushItemToLogseq(
@@ -120,7 +149,7 @@ export async function pushItemToLogseq(
   }
 
   // upsert related blocks (notes, attachments, relations, etc.)
-  const notesBlockUUID = id2UUID('note_' + item.key)
+  const notesBlockUUID = id2UUID('zotero_note_' + item.key)
   let notesBlock = await logseq.Editor.getBlock(notesBlockUUID)
   const note = item.note?.trim()
 
@@ -164,6 +193,8 @@ export async function startFullPushToLogseq(
     if (!opts?.items) {
       appState.pushingProgressMsg.set(`Pushing item types to Logseq tags...`)
       await pushItemTypesToLogseqTag()
+      appState.pushingProgressMsg.set(`Pushing collections to Logseq pages...`)
+      await pushCollectionsToLogseqPage()
     }
 
     appState.pushingProgressMsg.set(`Pushing items to Logseq pages...`)

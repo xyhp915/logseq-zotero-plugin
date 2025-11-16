@@ -2722,6 +2722,10 @@
           "creatorType": "translator"
         }
       ]
+    },
+    {
+      "itemType": "collections",
+      "fields": []
     }
   ]
 }
