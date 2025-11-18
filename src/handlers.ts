@@ -82,7 +82,6 @@ export async function pushCollectionsToLogseqPage() {
     const pageUUID = id2UUID('zotero_' + collection.key)
     console.log('>> key & uuid:', collection.key, pageUUID)
     let page = await logseq.Editor.getPage(pageUUID)
-    debugger
     if (!page) {
       page = await logseq.Editor.createPage(
         `${collection.name}`, {},
