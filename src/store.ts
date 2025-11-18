@@ -11,6 +11,7 @@ export type ZoteroItemEntity = {
   dateAdded: string,
   dateModified: string,
   tags: Array<any>,
+  collections: Array<string>,
   [key: string]: any
 }
 export type ZoteroCollectionEntity = {

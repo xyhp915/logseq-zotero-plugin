@@ -30,9 +30,9 @@ export async function pushItemTypesToLogseqTag() {
     // @ts-ignore
     zRootTag = await logseq.Editor.createTag(zRootTagName, { uuid: zRootTagUUID })
     await logseq.Editor.upsertProperty('key', { type: 'default' })
-    await logseq.Editor.upsertProperty('collections', { type: 'node', cardinality: 'many' })
+    await logseq.Editor.upsertProperty('ztags', { type: 'node', cardinality: 'many' })
     await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'key')
-    await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'collections')
+    await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'ztags')
   }
 
   const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis',
@@ -80,7 +80,9 @@ export async function pushCollectionsToLogseqPage() {
 
   for (const collection of collectionItems) {
     const pageUUID = id2UUID('zotero_' + collection.key)
+    console.log('>> key & uuid:', collection.key, pageUUID)
     let page = await logseq.Editor.getPage(pageUUID)
+    debugger
     if (!page) {
       page = await logseq.Editor.createPage(
         `${collection.name}`, {},
@@ -136,6 +138,20 @@ export async function pushItemToLogseq(
   const reservedFields = ['key', 'title', 'note']
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', item.key || '')
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'title', item.title || '')
+  if (!!item.collections) {
+    const collectionsIDs = await Promise.all(item.collections.map(async (colKey) => {
+      const pageUUID = id2UUID('zotero_' + colKey)
+      const colPage = await logseq.Editor.getPage(pageUUID)
+      if (colPage) {
+        return colPage.id
+      } else {
+        pushingLogger.error(`Collection page not found in Logseq for collection key: ${colKey}`)
+        return null
+      }
+    }))
+
+    await logseq.Editor.upsertBlockProperty(page!.uuid, 'ztags', collectionsIDs)
+  }
 
   // upsert all item fields as block properties
   for (const field of fields) {
