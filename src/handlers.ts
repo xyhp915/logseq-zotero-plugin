@@ -30,9 +30,9 @@ export async function pushItemTypesToLogseqTag() {
     // @ts-ignore
     zRootTag = await logseq.Editor.createTag(zRootTagName, { uuid: zRootTagUUID })
     await logseq.Editor.upsertProperty('key', { type: 'default' })
-    await logseq.Editor.upsertProperty('tags', { type: 'node', cardinality: 'many' })
+    await logseq.Editor.upsertProperty('collections', { type: 'node', cardinality: 'many' })
     await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'key')
-    await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'tags')
+    await logseq.Editor.addTagProperty(zRootTag?.uuid!, 'collections')
   }
 
   const pickedItemTypes = ['book', 'journalArticle', 'attachment', 'webpage', 'conferencePaper', 'thesis',
@@ -62,8 +62,9 @@ export async function pushItemTypesToLogseqTag() {
     for (const field of itemType.fields) {
       const fieldName = field.field
       try {
-        await logseq.Editor.upsertProperty(fieldName, { type: 'default' })
+        const fieldProperty = await logseq.Editor.upsertProperty(fieldName, { type: 'default' })
         await logseq.Editor.addTagProperty(tag?.uuid!, fieldName)
+        await logseq.Editor.upsertBlockProperty(fieldProperty.uuid, ':logseq.property/hide-empty-value', true)
       } catch (e) {
         pushingLogger.error(`Error adding property ${fieldName} to tag ${tagName}`)
         console.error(e)
