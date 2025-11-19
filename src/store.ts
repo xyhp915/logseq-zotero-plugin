@@ -262,12 +262,14 @@ export function useFilteredTopItems() {
   filteredItems = filteredItems.filter(item => {
     const qText = filteredQueryState.get().q.toLowerCase()
     if (!qText) return true
-    const title = item.title?.toLowerCase() || ''
-    const itemType = item.itemType?.toLowerCase() || ''
-    const tags = (item.tags || []).map((t: any) => t.tag.toLowerCase()).join(' ')
-    return title.includes(qText) ||
-      itemType.includes(qText) ||
-      tags.includes(qText)
+
+    const fieldsToSearch = [
+      item.title?.toLowerCase() || '',
+      item.itemType?.toLowerCase() || '',
+      (item.tags || []).map((t: any) => t.tag.toLowerCase()).join(' ')
+    ]
+
+    return fieldsToSearch.some(field => field.includes(qText))
   })
 
   return {
