@@ -236,7 +236,7 @@ export async function startFullPushToLogseq(
 
     appState.pushingProgressMsg.set(`Push to Logseq completed. Pushed ${successCount} items.`)
     pushingLogger.log('Full push to Logseq completed.')
-    await delay(3000)
+    await delay(1000)
   } catch (e) {
     appState.pushingError.set(String(e))
     console.error('Error starting full push to Logseq:', e)
