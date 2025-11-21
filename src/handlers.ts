@@ -103,7 +103,8 @@ export async function pushCollectionsToLogseqPage() {
 }
 
 export async function pushItemToLogseq(
-  item: Immutable<ZoteroItemEntity>
+  item: Immutable<ZoteroItemEntity>,
+  _isChildItem: boolean = false
 ) {
   console.log('>> Pushing item to Logseq:', item)
   await resolveItemTypesData()
@@ -138,6 +139,7 @@ export async function pushItemToLogseq(
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'key', item.key || '')
   await logseq.Editor.upsertBlockProperty(page!.uuid, 'title', item.title || '')
   if (!!item.collections) {
+    // upsert collections as ztags property
     const collectionsIDs = await Promise.all(item.collections.map(async (colKey) => {
       const pageUUID = id2UUID('zotero_' + colKey)
       const colPage = await logseq.Editor.getPage(pageUUID)
@@ -177,9 +179,38 @@ export async function pushItemToLogseq(
     } else {
       await logseq.Editor.updateBlock(notesBlock.uuid, note)
     }
+  }
 
-    // console.log('Created notes block for item:', notesBlock)
-    // await logseq.Editor.upsertBlockProperty(page!.uuid, 'note', item.note || '')
+  // upsert children attachments as sub-blocks
+  if (!!item.children) {
+    const attachmentTag = await logseq.Editor.getTag('attachment')
+    const attachmentsBlockUUID = id2UUID('zotero_attachments_' + item.key)
+    let attachmentsBlock = await logseq.Editor.getBlock(attachmentsBlockUUID)
+
+    if (!attachmentsBlock) {
+      attachmentsBlock = await logseq.Editor.appendBlockInPage(page!.uuid, `[[${attachmentTag?.uuid || 'Attachments:'}]]`,
+        // @ts-ignore
+        { customUUID: attachmentsBlockUUID, })
+    }
+
+    for (const childItem of item.children) {
+      const attachmentPageUUID = await pushItemToLogseq(childItem, true)
+      const attachmentChildUUID = id2UUID('zotero_child_' + childItem.key)
+      let attachmentChildBlock = await logseq.Editor.getBlock(attachmentChildUUID)
+      let blockContent = `[[${attachmentPageUUID}]] `
+      blockContent += childItem.url ? childItem.url :
+        `[${childItem.filename}](zotero://select/library/items/${childItem.key})`
+
+      if (!attachmentChildBlock) {
+        attachmentChildBlock = await logseq.Editor.insertBlock(
+          attachmentsBlock!.uuid, blockContent,
+          // @ts-ignore
+          { customUUID: attachmentChildUUID, }
+        )
+      } else {
+        await logseq.Editor.updateBlock(attachmentChildBlock.uuid, blockContent)
+      }
+    }
   }
 
   return pageUUID
@@ -207,41 +238,41 @@ export async function startFullPushToLogseq(
     appState.isPushing.set(true)
 
     if (!opts?.items) {
-      appState.pushingProgressMsg.set(`Pushing item types to Logseq tags...`)
+      appState.pullingOrPushingProgressMsg.set(`Pushing item types to Logseq tags...`)
       await pushItemTypesToLogseqTag()
-      appState.pushingProgressMsg.set(`Pushing collections to Logseq pages...`)
+      appState.pullingOrPushingProgressMsg.set(`Pushing collections to Logseq pages...`)
       await pushCollectionsToLogseqPage()
     }
 
-    appState.pushingProgressMsg.set(`Pushing items to Logseq pages...`)
+    appState.pullingOrPushingProgressMsg.set(`Pushing items to Logseq pages...`)
     const items = opts?.items || zTopItemsState.get()
     let count = 0
     let successCount = 0
 
     for (const item of items) {
       count++
-      appState.pushingProgressMsg.set(`Pushing items to Logseq pages (${count}/${items.length}) - ${item.title} ...`)
+      appState.pullingOrPushingProgressMsg.set(`Pushing items to Logseq pages (${count}/${items.length}) - ${item.title} ...`)
       pushingLogger.log(`Pushing item ${count}/${items.length}: ${item.title || 'Untitled'}`)
       try {
         await pushItemToLogseq(item)
         successCount++
       } catch (e) {
         const errMsg = `Error pushing item ${item.title || 'Untitled'} to Logseq: ${e}`
-        appState.pushingError.set(errMsg)
+        appState.pullingOrPushingErrorMsg.set(errMsg)
         pushingLogger.error(errMsg)
         console.error(e)
       }
       await delay(500) // slight delay to avoid blocking
     }
 
-    appState.pushingProgressMsg.set(`Push to Logseq completed. Pushed ${successCount} items.`)
+    appState.pullingOrPushingProgressMsg.set(`Push to Logseq completed. Pushed ${successCount} items.`)
     pushingLogger.log('Full push to Logseq completed.')
     await delay(1000)
   } catch (e) {
-    appState.pushingError.set(String(e))
+    appState.pullingOrPushingErrorMsg.set(String(e))
     console.error('Error starting full push to Logseq:', e)
   } finally {
     appState.isPushing.set(false)
-    appState.pushingProgressMsg.set('')
+    appState.pullingOrPushingProgressMsg.set('')
   }
 }

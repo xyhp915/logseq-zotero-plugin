@@ -76,6 +76,9 @@
           "field": "accessDate"
         },
         {
+          "field": "filename"
+        },
+        {
           "field": "url"
         }
       ],

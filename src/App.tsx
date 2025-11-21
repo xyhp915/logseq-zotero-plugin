@@ -172,87 +172,103 @@ function TopEntityItemsTableContainer (
               />
             </label>
           </th>
-          <th className={'pl-0 cursor-pointer'} onClick={() => toggleSort('title')}>Title{renderSortIndicator('title')}</th>
-          <th className={'cursor-pointer'} onClick={() => toggleSort('itemType')}>Type{renderSortIndicator('itemType')}</th>
-          <th className={'cursor-pointer'} onClick={() => toggleSort('collections')}>Collections{renderSortIndicator('collections')}</th>
-          <th className={'cursor-pointer'} onClick={() => toggleSort('dateModified')}>dateModified{renderSortIndicator('dateModified')}</th>
+          <th className={'pl-0 cursor-pointer'} onClick={() => toggleSort('title')}>Title{renderSortIndicator(
+              'title')}</th>
+          <th className={'cursor-pointer'} onClick={() => toggleSort('itemType')}>Type{renderSortIndicator(
+              'itemType')}</th>
+          <th className={'cursor-pointer'} onClick={() => toggleSort('collections')}>Collections{renderSortIndicator(
+              'collections')}</th>
+          <th>
+            Attachments
+          </th>
+          <th className={'cursor-pointer'} onClick={() => toggleSort('dateModified')}>dateModified{renderSortIndicator(
+              'dateModified')}</th>
           <th>More</th>
         </tr>
         </thead>
         <tbody>
         {sortedItems?.map(it => {
-           return (
-               <tr key={it.key} className={'even:bg-base-200'}>
-                 <td>
-                   <label className={'flex items-center'}>
-                     <input type="checkbox"
-                            checked={checkedItemsState[it.key].get() || false}
-                            onChange={e => {
-                              checkedItemsState[it.key].set(e.target.checked)
-                              checkedChangedState.set(p => p + 1)
-                            }}
-                     />
-                   </label>
-                 </td>
-                 <td className={'pl-0'}>
-                   <a href={'#'}
-                      className={'block'}
-                      onClick={(e) => {
-                        console.log(JSON.stringify(it, null, 2))
-                        // selected row
-                        const target = e.currentTarget
-                        const rowInput = target.closest('tr')?.
-                            querySelector('input[type="checkbox"]') as HTMLInputElement
-                        rowInput?.click()
+          return (
+              <tr key={it.key} className={'even:bg-base-200'}>
+                <td>
+                  <label className={'flex items-center'}>
+                    <input type="checkbox"
+                           checked={checkedItemsState[it.key].get() || false}
+                           onChange={e => {
+                             checkedItemsState[it.key].set(e.target.checked)
+                             checkedChangedState.set(p => p + 1)
+                           }}
+                    />
+                  </label>
+                </td>
+                <td className={'pl-0'}>
+                  <a href={'#'}
+                     className={'block'}
+                     onClick={(e) => {
+                       console.log(JSON.stringify(it, null, 2))
+                       // selected row
+                       const target = e.currentTarget
+                       const rowInput = target.closest('tr')?.
+                           querySelector('input[type="checkbox"]') as HTMLInputElement
+                       rowInput?.click()
                      }}>
                     <strong>
                       {getItemTitle(it)}
                     </strong>
-                   </a>
-                 </td>
-                 <td>
-                   <a className={'text-[13px] cursor-pointer flex gap-1 items-center opacity-80 hover:opacity-100'}
-                      onClick={async () => {
-                        const typeTag = await logseq.Editor.getTag(it.itemType)
-                        if (typeTag) {
-                          logseq.App.pushState('page', { name: typeTag.uuid })
-                          closeMainDialog()
-                        } else {
-                          await logseq.UI.showMsg(`Logseq tag not found for item type: ${it.itemType}`, 'error')
-                        }
-                      }}
-                   >
-                     {it.itemType}
-                     <LucideExternalLink size={12} className={'hover-visible'}/>
-                   </a>
-                 </td>
-                 <td>
-                   <CollectionsLabels itemCollectionKeys={it.collections}/>
-                 </td>
-                 <td>{it.dateModified}</td>
-                 {/*<td>{it.tags?.[0]?.tag}</td>*/}
-                 <td className={'flex'}>
-                   <PushItemButton item={it}/>
-                   <button className={'btn btn-xs btn-ghost px-1'}
-                           title={'Open page in Logseq'}
-                           onClick={async () => {
-                             try {
-                               await openItemInLogseq(it)
-                               closeMainDialog()
-                             } catch (e) {
-                               console.error('Error opening item in Logseq:', e)
-                             }
-                           }}
-                   >
-                     <LucideExternalLink size={14}/>
-                   </button>
-                 </td>
-               </tr>
-           )
-         })}
+                  </a>
+                </td>
+                <td>
+                  <a className={'text-[13px] cursor-pointer flex gap-1 items-center opacity-80 hover:opacity-100'}
+                     onClick={async () => {
+                       const typeTag = await logseq.Editor.getTag(it.itemType)
+                       if (typeTag) {
+                         logseq.App.pushState('page', { name: typeTag.uuid })
+                         closeMainDialog()
+                       } else {
+                         await logseq.UI.showMsg(`Logseq tag not found for item type: ${it.itemType}`, 'error')
+                       }
+                     }}
+                  >
+                    {it.itemType}
+                    <LucideExternalLink size={12} className={'hover-visible'}/>
+                  </a>
+                </td>
+                <td>
+                  <CollectionsLabels itemCollectionKeys={it.collections}/>
+                </td>
+                <td>
+                  {it.children?.map((att: ZoteroItemEntity) => {
+                    return (
+                        <code key={att.key} className={'badge badge-soft badge-xs mr-1'}>
+                          {att.title}
+                        </code>
+                    )
+                  })}
+                </td>
+                <td>{it.dateModified}</td>
+                {/*<td>{it.tags?.[0]?.tag}</td>*/}
+                <td className={'flex'}>
+                  <PushItemButton item={it}/>
+                  <button className={'btn btn-xs btn-ghost px-1'}
+                          title={'Open page in Logseq'}
+                          onClick={async () => {
+                            try {
+                              await openItemInLogseq(it)
+                              closeMainDialog()
+                            } catch (e) {
+                              console.error('Error opening item in Logseq:', e)
+                            }
+                          }}
+                  >
+                    <LucideExternalLink size={14}/>
+                  </button>
+                </td>
+              </tr>
+          )
+        })}
         </tbody>
       </table>
-   )
+  )
 }
 
 function TopEntityItemsFilteredContainer (
@@ -565,24 +581,27 @@ function App () {
 
   useEffect(() => {
     const isPushing = appState.isPushing.get()
-    const pushingProgressMsg = appState.pushingProgressMsg.get()
+    const isPulling = appState.isPulling.get()
+    const isSyncing = isPushing || isPulling
+    const syncingProgressMsg = appState.pullingOrPushingProgressMsg.get()?.trim()
 
-    if (isPushing) {
-      logseq.UI.showMsg(pushingProgressMsg, 'success',
-          { key: 'z-pushing-progress-msg', timeout: 0 },
+    if (isSyncing && !!syncingProgressMsg) {
+      logseq.UI.showMsg(syncingProgressMsg, 'success',
+          { key: 'z-syncing-progress-msg', timeout: 0 },
       )
     } else {
-      logseq.UI.closeMsg('z-pushing-progress-msg')
+      logseq.UI.closeMsg('z-syncing-progress-msg')
     }
 
-    if (!!appState.pushingError.get()) {
-      logseq.UI.showMsg(`${appState.pushingError.get()}`, 'error')
-      appState.pushingError.set('')
+    if (!!appState.pullingOrPushingErrorMsg.get()) {
+      logseq.UI.showMsg(`${appState.pullingOrPushingErrorMsg.get()}`, 'error')
+      appState.pullingOrPushingErrorMsg.set('')
     }
   }, [
     appState.isPushing.get(),
-    appState.pushingError,
-    appState.pushingProgressMsg.get()])
+    appState.isPulling.get(),
+    appState.pullingOrPushingErrorMsg,
+    appState.pullingOrPushingProgressMsg.get()])
 
   if (!appState.isVisible.get()) {
     return <></>
@@ -620,8 +639,15 @@ function App () {
             </span>
                   <button className={'btn btn-sm'}
                           onClick={async () => {
-                            await collectionsState.refresh({})
-                            await zTopItemsState.refresh({})
+                            try {
+                              appState.isPulling.set(true)
+                              await collectionsState.refresh({})
+                              await zTopItemsState.refresh({})
+                            } catch (e) {
+                              console.error('Error pulling remote Zotero top items:', e)
+                            } finally {
+                              appState.isPulling.set(false)
+                            }
                           }}
                           disabled={isSyncingRemote}
                   >

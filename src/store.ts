@@ -12,6 +12,7 @@ export type ZoteroItemEntity = {
   dateModified: string,
   tags: Array<any>,
   collections: Array<string>,
+  children?: Array<ZoteroItemEntity>,
   [key: string]: any
 }
 export type ZoteroCollectionEntity = {
@@ -35,9 +36,10 @@ export type UserSettings = {
 export const appState = hookstate({
   isVisible: true,
   isPushing: false, // sync to logseq
+  isPulling: false, // sync from remote Zotero
   pushingLogs: [''],
-  pushingError: '',
-  pushingProgressMsg: '',
+  pullingOrPushingErrorMsg: '',
+  pullingOrPushingProgressMsg: '',
   userSettings: JSON.parse(localStorage.getItem('zotero_user_settings') || '{}') as UserSettings
 })
 export const zTopItemsState = hookstate<Array<ZoteroItemEntity>>([])
@@ -77,7 +79,11 @@ function createZRequestHookState<T = any>(opts: {
       opts1 = { limit: 50, start: items.get().length, ...opts1 }
       try {
         const r = await opts.zGetFn(opts1)
-        return r.getData()
+        if (typeof r?.getData === 'function') {
+          return r.getData()
+        } else {
+          return r
+        }
       } catch (e) {
         console.error('Zotero API fetch error:', e)
       }
@@ -146,7 +152,27 @@ export const useCollections = createZRequestHookState<ZoteroCollectionEntity>({
 export const useTopItems = createZRequestHookState<ZoteroItemEntity>({
   itemsState: zTopItemsState,
   zGetFn: async (opts: any) => {
-    return zLocalApi.items().top().get(opts)
+    const res = await zLocalApi.items().top().get(opts)
+    const items: Array<ZoteroItemEntity> = res.getData()
+
+    if (items?.length) {
+      // fetch children notes for each item
+      for (const item of items) {
+        if (item.itemType === 'note') continue
+        appState.pullingOrPushingProgressMsg.set(`Fetching children for item ${item.title || item.key}...`)
+        try {
+          const res = await zLocalApi.items(item.key).children().get()
+          const children = res.getData()
+          if (children?.length) {
+            item.children = children
+          }
+        } catch (e) {
+          console.error('Error fetching children for item', item.key, e)
+        }
+      }
+    }
+
+    return items
   }
 })
 export const useZTags = createZRequestHookState({
