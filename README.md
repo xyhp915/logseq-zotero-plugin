@@ -1,5 +1,7 @@
 # Logseq Zotero Plugin
 
+> WIP: This plugin is under active development. Features and instructions may change. And only for DB version.
+
 A small Logseq plugin to search your Zotero library and insert references, citations, and notes into Logseq.
 
 ## Quick install
