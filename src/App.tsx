@@ -392,7 +392,7 @@ function TopEntityItemsFilteredContainer (
           {/* reset all filter */}
           {(filteredQueryState.value.filterItemTypes.length > 0 ||
               filteredQueryState.value.filterCollections.length > 0) && (
-              <button className={'btn btn-sm btn-ghost m-1 opacity-70'}
+              <button className={'btn btn-sm btn-ghost m-1 opacity-70 text-red-600'}
                       onClick={() => {
                         filteredQueryState.filterItemTypes.set([])
                         filteredQueryState.filterCollections.set([])
