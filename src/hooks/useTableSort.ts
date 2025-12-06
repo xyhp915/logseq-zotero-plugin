@@ -43,6 +43,8 @@ export default function useTableSort(
         }
         case 'collections':
           return (it?.collections || []).map((c: any) => String(c)).join(',').toLowerCase()
+        case 'attachments':
+          return (it?.children || []).length
         default: {
           const v = it?.[currentSortKey]
           return (v == null ? '' : String(v)).toLowerCase()

@@ -37,3 +37,15 @@ export function getItemTitle(
   title = truncateString(title, 100)
   return title
 }
+
+export function shortenFilename(filename: string, maxLength: number = 30): string {
+  if (filename.length <= maxLength) return filename
+
+  const extIndex = filename.lastIndexOf('.')
+  const extension = extIndex !== -1 ? filename.slice(extIndex) : ''
+  const namePart = extIndex !== -1 ? filename.slice(0, extIndex) : filename
+
+  const truncatedName = namePart.slice(0, maxLength - extension.length - 3)
+
+  return `${truncatedName}.${extension}`
+}
